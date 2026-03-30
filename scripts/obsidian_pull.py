@@ -1,0 +1,1 @@
+/home/kingb/aim/scripts/obsidian_pull.py

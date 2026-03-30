@@ -1,0 +1,1 @@
+/home/kingb/aim/scripts/sync_issue_tracker.py

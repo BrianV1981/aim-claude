@@ -1,0 +1,1 @@
+/home/kingb/aim/scripts/aim_push.sh
