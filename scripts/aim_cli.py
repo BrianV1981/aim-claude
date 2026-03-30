@@ -71,7 +71,7 @@ def cmd_search(args):
     """Dispatches to retriever.py."""
     query = " ".join(args.query)
     retriever_args = [query]
-    if args.top_k: retriever_args += ["--top-k", str(args.top_k)]
+    if args.top_k: retriever_args += ["--k", str(args.top_k)]
     if args.full: retriever_args += ["--full"]
     if args.context is not None: retriever_args += ["--context", str(args.context)]
     if args.session: retriever_args += ["--session", args.session]
