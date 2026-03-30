@@ -25,6 +25,11 @@ build/
 .DS_Store
 Thumbs.db
 
+# Symlinked backend (shared with /home/kingb/aim/)
+src
+archive
+core
+
 # Env
 .env
 .env.*
