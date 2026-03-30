@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "aim": {
+      "command": "/home/kingb/aim-claude/venv/bin/python3",
+      "args": ["/home/kingb/aim-claude/scripts/mcp_server_claude.py"],
+      "env": {
+        "PYTHONPATH": "/home/kingb/aim-claude/src"
+      }
+    }
+  }
+}
