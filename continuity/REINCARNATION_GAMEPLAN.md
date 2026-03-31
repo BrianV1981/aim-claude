@@ -1,238 +1,179 @@
 # REINCARNATION GAMEPLAN
 
-## ⚠️ URGENT DIRECTIVE FOR THE INCOMING AGENT
-You are waking up at the very beginning of a high-stakes migration build. The previous agent has distilled the full session into these rigid directives. Read this file completely before executing a single command.
+## URGENT DIRECTIVE FOR THE INCOMING AGENT
+You are waking up into a fully operational A.I.M. workspace. The previous agent completed a full 10-phase migration from Gemini CLI to Claude Code in a single session. Read this file completely before executing a single command.
 
-# 🤖 A.I.M. // CLAUDE CODE MIGRATION // EXECUTIVE DIRECTIVE
-**SESSION HEARTBEAT:** `v0.1.0` // `Foundation Sprint` // `Gemini → Claude Code Migration`
+# A.I.M. // CLAUDE CODE // POST-MIGRATION DIRECTIVE
+**SESSION HEARTBEAT:** `v0.2.0` // `Post-Migration Sprint` // `Stability & Polish`
 **Operator:** Brian Vasquez (@brianv1981)
 **Timestamp:** 2026-03-30
 
 ---
 
-## 1. THE STRATEGIC CONTEXT (READ THIS FIRST)
+## 1. WHAT WAS ACCOMPLISHED (THE FULL MIGRATION)
 
-### What A.I.M. Is
-A.I.M. (Actual Intelligent Memory) is an open-source exoskeleton built to solve the **Amnesia Problem** — the context window degradation that causes autonomous AI agents to hallucinate, drift, and produce spaghetti code after 50+ turns. It was originally built on **Gemini CLI** but was architected from day one to be model-agnostic. The core engine is pure Python + SQLite. Gemini was just the first agent plugged in.
+### Phase 1: CLI Backend (COMPLETE)
+- `aim-claude` CLI wired at `/home/kingb/aim-claude/scripts/aim_cli.py`
+- Alias registered in `~/.bashrc`
+- Backend connected via symlinks to shared engine at `/home/kingb/aim/`
+- `aim-claude map` and `aim-claude search` confirmed working against Engram DB (133MB, 21,962 fragments, 3,345 sessions)
 
-### Why We Are Here
-Gemini CLI has been unstable and problematic. The decision was made to hyperfixate on **Claude Code** as the primary agent target. A parallel **aim-codex** (OpenAI Codex) target exists and will resume after aim-claude reaches stability. A future **aim-ollama** (fully local, zero API cost) target is also planned.
+### Phase 2: Hook Adaptation (COMPLETE)
+- `hooks/cognitive_mantra.py` — PostToolUse, whisper@25 + full mantra@50 tool calls
+- `hooks/failsafe_context_snapshot.py` — PostToolUse, rolling JSONL backup + FALLBACK_TAIL.md
+- `hooks/context_injector.py` — PreToolUse, one-time session onboarding (ANCHOR + CORE_MEMORY + PULSE + TAIL)
+- All registered in `.claude/settings.json`
 
-### The Core Insight
-The A.I.M. backend (Engram DB, memory pipeline, GitOps bridge, DataJack, Skills) is already model-agnostic. The migration is mostly **plumbing** — hook format adaptation, one session file path, and one trigger event. The architecture does not need to change.
+### Phase 3: Session Format + Signal Sieve (COMPLETE)
+- Claude Code sessions documented: JSONL at `~/.claude/projects/<path>/<uuid>.jsonl`
+- `scripts/extract_signal.py` adapted for JSONL — achieves 9.3x compression (target was 4x-8x)
+- Full schema comparison (Gemini vs Claude Code) in `docs/SESSION_FORMAT.md`
 
----
+### Phases 4-10: Full Backend (COMPLETE)
+- All backend components verified working via symlinks to `/home/kingb/aim/`
+- Engram DB, memory pipeline (5-tier), sovereign sync, history scribe, DataJack, skills — all operational
+- MCP server wired in `.mcp.json` — exposes `search_engram` + `run_skill` as native tools
+- 12 utility scripts symlinked from aim/scripts/
+- Fixed `--top-k` → `--k` flag mismatch in search dispatch
+- `aim-claude health` confirmed: all systems green
 
-## 2. WHAT WAS ACCOMPLISHED THIS SESSION
+### Phase 11: Future Targets (DEFERRED)
+- #30: aim-codex (OpenAI Codex CLI port) — OPEN
+- #31: aim-ollama (fully local, zero API cost) — OPEN
+- #32: macOS support — OPEN
 
-### Workspace Scaffolding (COMPLETE)
-- ✅ Created `/home/kingb/aim-claude/` workspace
-- ✅ Wrote `CLAUDE.md` — cognitive baseline, converted from `GEMINI.md`, all `aim` commands renamed to `aim-claude`
-- ✅ Set up `.gitignore` — excludes `memory/`, `.claude/`, venv, WSL Zone.Identifier artifacts
-- ✅ Created `docs/ONBOARDING.md` — comprehensive wiki page documenting Claude Code's native initialization model, memory system, workspace scaffold, and design philosophy
-- ✅ Created `notes/` scratchpad folder
-- ✅ Created `continuity/` folder (this file lives here)
-
-### Git & GitHub (COMPLETE)
-- ✅ Initialized git repo in `/home/kingb/aim-claude/`
-- ✅ Branch set to `main`
-- ✅ Remote created: `https://github.com/BrianV1981/aim-claude`
-- ✅ Two commits pushed: initial scaffold + .gitignore + docs
-
-### Memory System (COMPLETE)
-- ✅ Memory index at `~/.claude/projects/-home-kingb-aim-claude/memory/MEMORY.md`
-- ✅ `user_profile.md` populated: Brian Vasquez, 45, Florida, self-employed, novice dev, family context, communication style, values
-- ✅ `reference_xprofile.md` created: pointer to `aim-claude/memory/OPERATOR_PROFILE.md`
-
-### Roadmap (COMPLETE — 32 tickets open)
-- ✅ Full 11-phase roadmap created as GitHub Issues at `https://github.com/BrianV1981/aim-claude/issues`
-- ✅ All 32 tickets tagged `enhancement`
-- ✅ Full wiki reviewed and absorbed: Home, Logic, Brain Map, Technical Spec, Master Schema, Atomic Architecture, Hybrid RAG, Handoff Architecture, Universal Skills, GitOps Bridge, Roadmap
+### GitHub Issues: 29/32 CLOSED
+Only Phase 11 future targets remain open.
 
 ---
 
-## 3. THE CURRENT PROJECT STATE
+## 2. CURRENT REPOSITORY STRUCTURE
 
-### Repository Structure (Current)
 ```
 /home/kingb/aim-claude/
 ├── CLAUDE.md                          ← Cognitive baseline (loaded every session)
-├── .gitignore                         ← memory/, .claude/, venv, WSL excluded
+├── .gitignore                         ← memory/, .claude/, venv, symlinks excluded
+├── .mcp.json                          ← MCP server registration for Claude Code
+├── .claude/
+│   ├── settings.json                  ← Hook registration (3 hooks)
+│   └── settings.local.json            ← Permission rules
+├── scripts/
+│   ├── aim_cli.py                     ← Main CLI (adapted copy)
+│   ├── extract_signal.py              ← Session JSONL → signal skeleton
+│   ├── mcp_server_claude.py           ← MCP server wrapper (CLAUDE.md context)
+│   └── *.py / *.sh                    ← Symlinks to /home/kingb/aim/scripts/
+├── hooks/
+│   ├── cognitive_mantra.py            ← Drift prevention (whisper/mantra)
+│   ├── failsafe_context_snapshot.py   ← Rolling backup + tail
+│   └── context_injector.py            ← JIT session onboarding
 ├── docs/
-│   └── ONBOARDING.md                  ← Claude Code onboarding wiki
-├── notes/                             ← Scratchpad (empty)
+│   ├── ONBOARDING.md                  ← Claude Code onboarding wiki
+│   └── SESSION_FORMAT.md              ← JSONL schema documentation
+├── continuity/
+│   ├── REINCARNATION_GAMEPLAN.md      ← This file
+│   ├── FALLBACK_TAIL.md               ← Last 10 turns (auto-generated)
+│   └── INTERIM_BACKUP.jsonl           ← Rolling session backup
+├── foundry/                           ← Expert knowledge intake zone (empty)
 ├── memory/                            ← Local only, gitignored
-│   ├── MEMORY.md                      ← Empty (placeholder)
-│   ├── OPERATOR.md                    ← Brian's basic identity
-│   └── OPERATOR_PROFILE.md            ← Brian's X.com voice/archetype
-└── continuity/
-    ├── REINCARNATION_GAMEPLAN.md      ← This file
-    └── LAST_SESSION_FLIGHT_RECORDER.md ← Previous session archive (from aim project)
+├── notes/                             ← Scratchpad
+│
+│ SYMLINKS (shared backend at /home/kingb/aim/):
+├── src -> /home/kingb/aim/src         ← Core engine (retriever, memory pipeline, MCP)
+├── archive -> /home/kingb/aim/archive ← Engram DB (engram.db + history.db)
+├── core -> /home/kingb/aim/core       ← CONFIG.json
+├── venv -> /home/kingb/aim/venv       ← Python virtual environment
+└── skills -> /home/kingb/aim/skills   ← 4 pre-built MCP skills
 
 ~/.claude/projects/-home-kingb-aim-claude/memory/
 ├── MEMORY.md                          ← Auto-loaded index
 ├── user_profile.md                    ← Brian's full profile
-└── reference_xprofile.md             ← Pointer to OPERATOR_PROFILE.md
+└── reference_xprofile.md              ← Pointer to OPERATOR_PROFILE.md
 ```
 
-### GitHub Issues (Full Roadmap)
-| Phase | Issue # | Title | Status |
-|---|---|---|---|
-| 1 | #1 | Verify aim-claude CLI backend | OPEN — START HERE |
-| 2 | #2 | Cognitive Mantra hook | OPEN |
-| 2 | #3 | Failsafe Context Snapshot hook | OPEN |
-| 2 | #4 | Context Injector hook (JIT) | OPEN |
-| 3 | #5 | Locate Claude Code session files + adapt extract_signal.py | OPEN |
-| 3 | #6 | Zero-Token Signal Sieve | OPEN |
-| 4 | #7 | Engram DB (SQLite Hybrid RAG) | OPEN |
-| 4 | #8 | Cascading Memory Engine (4-tier waterfall) | OPEN |
-| 4 | #9 | Foundry Ingestion pipeline | OPEN |
-| 4 | #10 | Sovereign Sync (SQLite → JSONL) | OPEN |
-| 4 | #11 | History Scribe | OPEN |
-| 5 | #12 | Reincarnation Protocol | OPEN |
-| 5 | #13 | Handoff Wake-up Sequence | OPEN |
-| 6 | #14 | aim-claude bug | OPEN |
-| 6 | #15 | aim-claude fix | OPEN |
-| 6 | #16 | aim-claude push | OPEN |
-| 6 | #17 | aim-claude promote | OPEN |
-| 7 | #18 | fastmcp server + Claude Code MCP | OPEN |
-| 7 | #19 | Universal Skills Framework | OPEN |
-| 8 | #20 | Cognitive Routing (multi-model) | OPEN |
-| 8 | #21 | aim-claude tui | OPEN |
-| 9 | #22 | DataJack Protocol + jack-in | OPEN |
-| 9 | #23 | aim-claude exchange | OPEN |
-| 10 | #24 | aim-claude init | OPEN |
-| 10 | #25 | aim-claude health | OPEN |
-| 10 | #26 | aim-claude delegate | OPEN |
-| 10 | #27 | Eureka Protocol | OPEN |
-| 10 | #28 | Quarantine Daemon / Bouncer | OPEN |
-| 10 | #29 | Obsidian Bridge | OPEN |
-| 11 | #30 | aim-codex (Codex CLI port) | OPEN — FUTURE |
-| 11 | #31 | aim-ollama (fully local) | OPEN — FUTURE |
-| 11 | #32 | macOS support | OPEN — FUTURE |
-
 ---
 
-## 4. CRITICAL ARCHITECTURE NOTES (DO NOT GUESS — READ THESE)
+## 3. WHAT THE NEXT AGENT SHOULD DO
 
-### What Maps Natively to Claude Code
-- `CLAUDE.md` ← `GEMINI.md` (done — already converted)
-- Claude Code hooks (bash, `.claude/settings.json`) ← Gemini TypeScript hooks
-- Claude Code MCP client ← already speaks MCP, will connect to fastmcp server natively
-- `~/.claude/projects/.../memory/` ← Claude's persistent memory system (already populated)
+### Priority 1: MCP Server Verification
+The MCP server (`.mcp.json`) was wired but not tested live in-session (requires restart). On your first session:
+1. Check if `search_engram` and `run_skill` appear as available MCP tools
+2. Test: call `search_engram("A_I_M_HANDBOOK.md")` as a native tool
+3. If not working, debug the stdio transport connection
 
-### What Requires Adaptation
-1. **Hooks:** Gemini used TypeScript hooks. Claude Code uses **bash hooks** registered in `.claude/settings.json`. Hook events: `PreToolUse`, `PostToolUse`, `Notification`, `Stop`, `SubagentStop`. The `cognitive_mantra`, `failsafe_context_snapshot`, and `context_injector` hooks must be rewritten as bash scripts.
-2. **Session data path:** `extract_signal.py` currently targets `.gemini/tmp/.../chats/*.json`. Claude Code stores session data at a different path in a different JSON schema. Must locate and document before signal extraction can work.
-3. **Reincarnation trigger:** Gemini crashed (Node.js V8 heap). Claude Code compresses context silently. Reincarnation must be **proactive** (operator-triggered or tool-count-based), not reactive to a crash event.
+### Priority 2: Hook Live Testing
+The three hooks are registered but the context_injector and failsafe_snapshot should be verified firing in a real session (not just simulated stdin). Check:
+1. Does `continuity/FALLBACK_TAIL.md` update after tool calls?
+2. Does `continuity/mantra_state.json` increment?
+3. Does context injection fire on first tool call of a new session?
 
-### What Already Works As-Is (No Changes Needed)
-- The Engram DB (SQLite + hybrid RAG) — pure Python, backend-agnostic
-- The entire memory distillation pipeline (Tier 1-4 waterfall) — pure Python
-- The GitOps bridge (`aim-claude bug/fix/push/promote`) — pure bash + `gh` CLI
-- The DataJack protocol (`.engram` cartridges) — pure SQLite
-- The MCP fastmcp server — Claude Code speaks MCP natively
-- The Skills framework — already architected as CLI-agnostic
-
-### The Source of Truth
-- **aim repo:** `/home/kingb/aim/` — the original Gemini-based A.I.M. project. All source code lives here. Do not rewrite from scratch — port and adapt.
-- **aim.wiki:** `/home/kingb/aim/aim.wiki/` — full documentation. Use `aim-claude search` to query the Engram DB, or read wiki files directly.
-- **aim-claude repo:** `/home/kingb/aim-claude/` — this workspace. Where the Claude Code port is being built.
-
----
-
-## 5. THE BATTLE PLAN (Next Agent Mandate)
-
-**Upon waking, you will execute the following steps in strict order. Do not deviate.**
-
-### Step 0: VERIFY WAKE-UP INTEGRITY
-- Confirm you are reading `continuity/REINCARNATION_GAMEPLAN.md` in `/home/kingb/aim-claude/`
-- Run `gh issue list --limit 5` to confirm the issue tracker is live
-- Run `git branch --show-current` — must read `main` (no active feature branch yet)
-- Run `git log --oneline -5` to confirm current commit state
-
-### Step 1: EXECUTE ISSUE #1 — Verify aim-claude CLI Backend
-This is the non-negotiable first step. Nothing else can be validated until the backend is confirmed working.
-
-**Tasks:**
-1. Locate the `aim-claude` alias/binary — run `which aim-claude` and inspect `~/.bashrc` or `~/.bash_aliases`
-2. Test `aim-claude map` — should return a lightweight index of all loaded documentation titles
-3. Test `aim-claude search "A.I.M."` — should return results from the Engram DB
-4. Confirm `engram.db` exists — check `/home/kingb/aim/archive/engram.db` or wherever it lives
-5. Document findings. If any command fails, open a bug ticket before proceeding.
-
-**GitOps protocol for this issue:**
+### Priority 3: HANDOFF.md Generation
+The `aim-claude handoff` command generates `continuity/CURRENT_PULSE.md`. Test it:
 ```bash
-aim-claude bug "Phase 1: CLI backend verification failed — <describe issue>"
-aim-claude fix 1
-# do the work
-aim-claude push "Fix: Verified aim-claude CLI backend (Closes #1)"
+aim-claude handoff
 ```
+This should produce a clean project pulse for future session handoffs.
 
-### Step 2: EXECUTE ISSUE #5 — Locate Claude Code Session Files
-This is the critical path dependency for the entire signal extraction pipeline.
+### Priority 4: Stability Polish
+- Test `aim-claude memory` (runs the 5-tier distillation pipeline)
+- Test `aim-claude push` from a feature branch (semantic versioning + sovereign sync)
+- Consider adding a `PreCompact` hook that saves critical context before autocompaction
 
-**Tasks:**
-1. Start a Claude Code session, do some work, then find where it saves session data
-2. Check `~/.claude/` recursively for JSON session files
-3. Document the exact path pattern and JSON schema
-4. Compare schema to Gemini's `.gemini/tmp/.../chats/*.json` format
-5. Update `scripts/extract_signal.py` path and parser accordingly
-
-### Step 3: EXECUTE ISSUES #2, #3, #4 — Hook Adaptation
-Once the backend is verified, adapt the three core hooks to Claude Code format.
-
-**Hook registration target:** `.claude/settings.json` in the aim-claude workspace
-
-**Reference:** Check `/home/kingb/aim/hooks/` for the original Gemini hook implementations. Port the logic, not the TypeScript wrapper.
-
-**Hook format for Claude Code:**
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      { "matcher": "", "hooks": [{ "type": "command", "command": "bash /path/to/hook.sh" }] }
-    ]
-  }
-}
-```
-
-### Step 4: Do Not Skip Ahead
-Phases 4-11 depend on Phases 1-3 being stable. Do not touch the Engram DB, memory pipeline, or MCP server until the hooks are working and session extraction is confirmed. The Atomic Architecture principle applies: build one indestructible atom at a time.
+### Priority 5: Phase 11 (When Ready)
+- aim-codex (#30): Port the same symlink strategy to `/home/kingb/aim-codex/`
+- aim-ollama (#31): New target — fully local, zero API cost
+- macOS (#32): Cross-platform compatibility
 
 ---
 
-## 6. OPERATOR DIRECTIVES (BEHAVIORAL CONSTRAINTS)
+## 4. OPERATOR DIRECTIVES (UNCHANGED)
 
-- **Never commit directly to `main`.** Always use `aim-claude bug` → `aim-claude fix` → `aim-claude push` → `aim-claude promote`.
-- **Never guess.** If you need information about the A.I.M. architecture, read the wiki at `/home/kingb/aim/aim.wiki/` or run `aim-claude search "<query>"`.
-- **TDD first.** Every functional change requires a test. No code enters `src/` without a verification script.
-- **Atomic Architecture.** Build isolated atoms that communicate through dumb text files. Do not build Rube Goldberg machines.
-- **The operator is novice-level technically.** Explain decisions clearly. Do not assume familiarity with Python internals, SQLite triggers, or MCP protocol details.
+- **Never commit directly to `main`.** Always use `aim-claude bug` → `aim-claude fix` → `aim-claude push`.
+- **Never guess.** Run `aim-claude search "<query>"` or read the wiki at `/home/kingb/aim/aim.wiki/`.
+- **TDD first.** Every functional change requires a test.
+- **Atomic Architecture.** Build isolated atoms that communicate through dumb text files.
+- **The operator is novice-level technically.** Explain decisions clearly.
 - **Brian's communication style:** Direct, blunt, no fluff. Match it.
 
 ---
 
-## 7. KEY FILE PATHS (REFERENCE MAP)
+## 5. KEY FILE PATHS
 
 | File/Dir | Location | Purpose |
 |---|---|---|
-| A.I.M. source | `/home/kingb/aim/` | Original Gemini project — source of truth for porting |
+| A.I.M. source | `/home/kingb/aim/` | Original project — backend source of truth |
 | A.I.M. wiki | `/home/kingb/aim/aim.wiki/` | Full documentation |
-| Engram DB | `/home/kingb/aim/archive/engram.db` | SQLite hybrid RAG brain |
-| Hook scripts | `/home/kingb/aim/hooks/` | Original Gemini hooks to port |
-| Python src | `/home/kingb/aim/src/` | Core engine scripts |
-| CLI scripts | `/home/kingb/aim/scripts/` | Utility scripts |
+| Engram DB | `/home/kingb/aim/archive/engram.db` | SQLite hybrid RAG brain (21,962 fragments) |
+| History DB | `/home/kingb/aim/archive/history.db` | Session archive with FTS5 |
 | aim-claude workspace | `/home/kingb/aim-claude/` | This repo — Claude Code port |
 | Claude memory | `~/.claude/projects/-home-kingb-aim-claude/memory/` | Persistent cross-session memory |
-| GitHub Issues | `https://github.com/BrianV1981/aim-claude/issues` | Full roadmap — 32 open tickets |
+| Claude sessions | `~/.claude/projects/-home-kingb-aim-claude/*.jsonl` | Session transcripts |
+| GitHub Issues | `https://github.com/BrianV1981/aim-claude/issues` | 3 open (Phase 11 future targets) |
+| User settings | `~/.claude/settings.json` | Global config (statusline, model) |
+| Project settings | `.claude/settings.json` | Hooks registration |
+
+---
+
+## 6. GIT LOG (MIGRATION COMMITS)
+
+```
+a6c0331 Feature: Verify Phases 8-10, symlink utility scripts, add skills dir
+25f48bf Feature: Wire fastmcp MCP server to Claude Code + symlink skills
+518a1ab Fix: Repair --top-k flag + verify Phases 4-6
+ab26b0f Feature: Port three core hooks to Claude Code format
+33d32a3 Feature: Locate Claude Code session files and adapt signal extractor
+002d60f Fix: Verify aim-claude CLI backend
+e513c81 Docs: REINCARNATION_GAMEPLAN.md
+430c168 Docs: Claude Code onboarding wiki
+40446c3 Add .gitignore
+c5d9ec3 Initial commit: scaffold Claude Code workspace
+```
 
 ---
 
 **END OF LINE.**
-**TELEPORTATION IMMINENT.**
+**THE MIGRATION IS COMPLETE.**
 **CARRY THE BEAT.**
 
 ---
-**Commander's Intent:** Verify the aim-claude backend is operational (Issue #1), locate Claude Code session files (Issue #5), then adapt the three core hooks to Claude Code format (Issues #2-4). Do not proceed to Phase 4+ until Phase 1-2 are confirmed stable.
-**Timestamp:** 2026-03-30 18:00:00
+**Commander's Intent:** Verify MCP server fires live, confirm hooks are active, then polish stability. Phase 11 future targets are explicitly deferred until the operator gives the order.
+**Timestamp:** 2026-03-30 19:15:00
