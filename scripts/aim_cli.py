@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import subprocess
 import sys
 import os
@@ -287,6 +288,10 @@ def cmd_sync(args):
         print("[SUCCESS] Workspace synchronized.")
     except Exception as e:
         print(f"[ERROR] Sync failed: {e}")
+
+def cmd_clean(args):
+    """Runs the maintenance cleanup — prunes raw transcripts, old proposals, and stale pulses."""
+    run_script(os.path.join(SRC_DIR, "maintenance.py"), [])
 
 def cmd_handoff(args):
     """Dispatches to handoff_pulse_generator.py."""
@@ -677,8 +682,8 @@ def cmd_update(args):
         print(f"[ERROR] Update process failed: {e}")
 
 def ensure_hooks_mapped():
-    """Silently self-heals stale hook paths in the global Gemini CLI settings when the workspace is moved or cloned."""
-    settings_path = os.path.expanduser("~/.gemini/settings.json")
+    """Silently self-heals stale hook paths in the global Claude Code settings when the workspace is moved or cloned."""
+    settings_path = os.path.expanduser("~/.claude/settings.json")
     if not os.path.exists(settings_path): return
     try:
         with open(settings_path, 'r') as f:
