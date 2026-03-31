@@ -31,6 +31,10 @@ archive
 core
 skills
 
+# Runtime state (hooks)
+continuity/*.json
+continuity/*.jsonl
+
 # Env
 .env
 .env.*
