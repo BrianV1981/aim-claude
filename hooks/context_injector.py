@@ -88,6 +88,10 @@ def main():
         if tail:
             injection_parts.append(f"## IMMEDIATE CONTEXT (LAST 10 TURNS)\n{tail}")
 
+        tracker = read_file_safe(os.path.join(continuity_dir, "ISSUE_TRACKER.md"))
+        if tracker:
+            injection_parts.append(f"## OPEN TICKETS (ACTIVE WORK)\n{tracker}")
+
         if not injection_parts:
             print(json.dumps({}))
             return

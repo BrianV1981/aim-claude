@@ -392,6 +392,26 @@ class TestContextInjectorFileInjection(unittest.TestCase):
         self.assertIn("IMMEDIATE CONTEXT", ctx)
         self.assertIn("TAIL CONTENT", ctx)
 
+    def test_issue_tracker_injected_with_header(self):
+        self._write("ISSUE_TRACKER.md", "* #61 - Auto-sync issue tracker")
+        result = self._run({"session_id": "s1"})
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("OPEN TICKETS", ctx)
+        self.assertIn("#61", ctx)
+
+    def test_all_five_files_injected(self):
+        self._write("ANCHOR.md", "A")
+        self._write("CORE_MEMORY.md", "B")
+        self._write("CURRENT_PULSE.md", "C")
+        self._write("FALLBACK_TAIL.md", "D")
+        self._write("ISSUE_TRACKER.md", "E")
+        result = self._run({"session_id": "s1"})
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("SESSION ONBOARDING", ctx)
+        self.assertIn("END ONBOARDING", ctx)
+        for marker in ["MEMORY ANCHOR", "CORE MEMORY", "PROJECT MOMENTUM", "IMMEDIATE CONTEXT", "OPEN TICKETS"]:
+            self.assertIn(marker, ctx)
+
     def test_all_four_files_injected(self):
         self._write("ANCHOR.md", "A")
         self._write("CORE_MEMORY.md", "B")
