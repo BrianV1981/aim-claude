@@ -662,6 +662,68 @@ class TestKnownBugs(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# CLAUDE.md — swarm portability checks (#63)
+# ---------------------------------------------------------------------------
+
+CLAUDE_MD_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "CLAUDE.md"
+)
+
+# Verbs that appear in CLAUDE.md command examples (aim-claude <verb>)
+_CLI_VERBS = ["search", "bug", "fix", "push", "map", "crash", "mail", "sync-issues"]
+
+
+class TestClaudeMdCliNamePortability(unittest.TestCase):
+    """
+    Swarm mandate (aim-antigravity 2026-04-01): every command reference in
+    CLAUDE.md must use the <CLI_NAME> placeholder, not the hardcoded
+    workspace name 'aim-claude'. This ensures agents on other repos
+    (aim-codex, aim-ollama, aim-vscode) execute the correct CLI alias.
+    """
+
+    def _source(self):
+        with open(CLAUDE_MD_PATH, encoding="utf-8") as f:
+            return f.read()
+
+    def test_cli_name_callout_block_present(self):
+        """CLAUDE.md must contain the fluid CLI name callout so agents know
+        to substitute <CLI_NAME> with the actual workspace folder name."""
+        src = self._source()
+        self.assertIn(
+            "<CLI_NAME>",
+            src,
+            "CLAUDE.md is missing the <CLI_NAME> placeholder. "
+            "Swarm mandate (aim-antigravity) requires replacing hardcoded 'aim-claude' "
+            "commands with <CLI_NAME> for cross-repo portability.",
+        )
+
+    def test_no_hardcoded_aim_claude_commands(self):
+        """No backtick-wrapped `aim-claude <verb>` commands should remain.
+        Every command example must use `<CLI_NAME> <verb>` instead."""
+        src = self._source()
+        import re
+        # Match `aim-claude <verb>` patterns inside backticks
+        pattern = r"`aim-claude\s+(' + '|'.join(_CLI_VERBS) + r')`"
+        hardcoded = re.findall(r"`aim-claude\s+(?:' + '|'.join(_CLI_VERBS) + r')(?:[^`]*)`", src)
+        self.assertEqual(
+            hardcoded, [],
+            f"CLAUDE.md still contains hardcoded `aim-claude` command(s): {hardcoded}. "
+            "Replace with `<CLI_NAME> <verb>` per swarm mandate.",
+        )
+
+    def test_each_cli_verb_uses_cli_name_placeholder(self):
+        """Every core CLI verb should appear as <CLI_NAME> <verb>, not aim-claude <verb>."""
+        src = self._source()
+        for verb in ["search", "bug", "fix", "push", "map"]:
+            self.assertIn(
+                f"<CLI_NAME> {verb}",
+                src,
+                f"CLAUDE.md missing `<CLI_NAME> {verb}` — ensure the {verb} command "
+                f"uses the portable placeholder.",
+            )
+
+
+# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
