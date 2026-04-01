@@ -103,5 +103,72 @@ class TestReincarnateIssueTrackerSync(unittest.TestCase):
                       "sync_issue_tracker.py path must include 'scripts/' directory")
 
 
+class TestReincarnateCliArg(unittest.TestCase):
+    """Issue #68: intent can be passed as a CLI arg to bypass interactive input()."""
+
+    def setUp(self):
+        self.mod = _load_reincarnate()
+
+    def _run_main_with_argv(self, argv):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            result = MagicMock()
+            result.stdout = ""
+            result.returncode = 0
+            return result
+
+        with patch.object(sys, "argv", ["aim_reincarnate.py"] + argv), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"), \
+             patch("builtins.input") as mock_input:
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+            return calls, mock_input
+
+    def test_cli_arg_bypasses_input(self):
+        """When intent is supplied as argv, input() must not be called."""
+        _, mock_input = self._run_main_with_argv(["Continue the roadmap"])
+        mock_input.assert_not_called()
+
+    def test_cli_arg_multi_word(self):
+        """Multi-word intent passed as argv is joined and used."""
+        calls, mock_input = self._run_main_with_argv(["Fix", "issue", "42"])
+        mock_input.assert_not_called()
+        flat = [str(c) for c in calls]
+        pulse_called = any("handoff_pulse_generator" in c for c in flat)
+        self.assertTrue(pulse_called)
+
+    def test_no_argv_falls_back_to_input(self):
+        """When no argv is supplied, input() is called for Commander's Intent."""
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            result = MagicMock()
+            result.stdout = ""
+            result.returncode = 0
+            return result
+
+        with patch.object(sys, "argv", ["aim_reincarnate.py"]), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"), \
+             patch("builtins.input", return_value="manual intent") as mock_input:
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+        mock_input.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

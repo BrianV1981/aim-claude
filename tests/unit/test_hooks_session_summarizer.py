@@ -376,14 +376,16 @@ class TestProcessTranscriptLightMode:
     def test_hourly_file_contains_session_id(self):
         path = self._write_transcript([USER_MSG])
         self.mod.process_transcript(path, is_light_mode=True)
-        hourly_path = os.path.join(self.mod.HOURLY_DIR, os.listdir(self.mod.HOURLY_DIR)[0])
+        date_files = [f for f in os.listdir(self.mod.HOURLY_DIR) if f != "seed.md"]
+        hourly_path = os.path.join(self.mod.HOURLY_DIR, date_files[0])
         content = open(hourly_path).read()
         assert "sess-abc" in content
 
     def test_hourly_file_contains_user_text(self):
         path = self._write_transcript([USER_MSG])
         self.mod.process_transcript(path, is_light_mode=True)
-        hourly_path = os.path.join(self.mod.HOURLY_DIR, os.listdir(self.mod.HOURLY_DIR)[0])
+        date_files = [f for f in os.listdir(self.mod.HOURLY_DIR) if f != "seed.md"]
+        hourly_path = os.path.join(self.mod.HOURLY_DIR, date_files[0])
         content = open(hourly_path).read()
         assert "Hello AIM" in content
 
@@ -447,7 +449,8 @@ class TestProcessTranscriptLLMMode:
         self.mod.generate_reasoning = MagicMock(return_value="## NARRATIVE OUTPUT")
         path = self._write_transcript([USER_MSG])
         self.mod.process_transcript(path, is_light_mode=False)
-        hourly_path = os.path.join(self.mod.HOURLY_DIR, os.listdir(self.mod.HOURLY_DIR)[0])
+        date_files = [f for f in os.listdir(self.mod.HOURLY_DIR) if f != "seed.md"]
+        hourly_path = os.path.join(self.mod.HOURLY_DIR, date_files[0])
         content = open(hourly_path).read()
         assert "NARRATIVE OUTPUT" in content
 
