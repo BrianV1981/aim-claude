@@ -170,5 +170,97 @@ class TestReincarnateCliArg(unittest.TestCase):
         mock_input.assert_called_once()
 
 
+class TestReincarnateScrivenerPipeline(unittest.TestCase):
+    """Issue #72: session_summarizer.py must be wired into aim_reincarnate.py
+    as step 0.5 — before the pulse, after the issue tracker sync."""
+
+    def setUp(self):
+        self.mod = _load_reincarnate()
+
+    def _run_main_mocked(self, summarizer_side_effect=None):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            if summarizer_side_effect and "session_summarizer" in str(cmd):
+                raise summarizer_side_effect
+            result = MagicMock()
+            result.stdout = ""
+            result.returncode = 0
+            return result
+
+        with patch("builtins.input", return_value="test intent"), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"):
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+        return calls
+
+    def test_session_summarizer_called(self):
+        """session_summarizer.py must be invoked during reincarnation."""
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        self.assertTrue(
+            any("session_summarizer" in c for c in flat),
+            "session_summarizer.py was never called during reincarnation"
+        )
+
+    def test_summarizer_called_before_pulse(self):
+        """session_summarizer must run before handoff_pulse_generator (step 0.5 < step 1)."""
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        summ_idx = next((i for i, c in enumerate(flat) if "session_summarizer" in c), None)
+        pulse_idx = next((i for i, c in enumerate(flat) if "handoff_pulse_generator" in c), None)
+        self.assertIsNotNone(summ_idx, "session_summarizer.py never called")
+        self.assertIsNotNone(pulse_idx, "handoff_pulse_generator.py never called")
+        self.assertLess(summ_idx, pulse_idx,
+                        "session_summarizer must run BEFORE handoff_pulse_generator")
+
+    def test_summarizer_called_after_sync(self):
+        """session_summarizer must run after sync_issue_tracker (step 0 < step 0.5)."""
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        sync_idx = next((i for i, c in enumerate(flat) if "sync_issue_tracker" in c), None)
+        summ_idx = next((i for i, c in enumerate(flat) if "session_summarizer" in c), None)
+        self.assertIsNotNone(sync_idx, "sync_issue_tracker.py never called")
+        self.assertIsNotNone(summ_idx, "session_summarizer.py never called")
+        self.assertLess(sync_idx, summ_idx,
+                        "sync_issue_tracker must run BEFORE session_summarizer")
+
+    def test_summarizer_failure_is_non_fatal(self):
+        """If session_summarizer fails, reincarnation must continue to pulse."""
+        import subprocess
+        calls = self._run_main_mocked(
+            summarizer_side_effect=subprocess.CalledProcessError(1, "session_summarizer.py")
+        )
+        flat = [str(c) for c in calls]
+        self.assertTrue(
+            any("handoff_pulse_generator" in c for c in flat),
+            "Reincarnation aborted after summarizer failure — must be non-fatal"
+        )
+
+    def test_summarizer_uses_hooks_dir(self):
+        """session_summarizer.py must be resolved from AIM_ROOT/hooks/."""
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        summ_call = next((c for c in flat if "session_summarizer" in c), None)
+        self.assertIsNotNone(summ_call)
+        self.assertIn("hooks", summ_call,
+                      "session_summarizer.py path must include 'hooks/' directory")
+
+    def test_summarizer_called_with_light_flag(self):
+        """session_summarizer must be called with --light for fast non-LLM mode."""
+        calls = self._run_main_mocked()
+        summ_call = next((c for c in calls if "session_summarizer" in str(c)), None)
+        self.assertIsNotNone(summ_call)
+        self.assertIn("--light", summ_call,
+                      "session_summarizer must be invoked with --light flag")
+
+
 if __name__ == "__main__":
     unittest.main()
