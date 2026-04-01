@@ -322,6 +322,11 @@ def main(args):
         print(json.dumps({"decision": "proceed", "updated": 0, "reason": "no_transcripts"}))
         return
 
+    hourly_files = glob.glob(os.path.join(HOURLY_DIR, "*.md"))
+    if not hourly_files:
+        print(json.dumps({"decision": "skip", "updated": 0, "reason": "no_hourly_files"}))
+        return
+
     # Process only the most recently modified transcript (incremental delta)
     latest = max(transcripts, key=os.path.getmtime)
     updated = 1 if process_transcript(latest, is_light_mode) else 0
