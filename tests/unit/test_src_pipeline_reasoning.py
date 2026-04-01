@@ -51,7 +51,12 @@ def _build_keyring_stub():
 if 'requests' not in sys.modules:
     sys.modules['requests'] = _build_requests_stub()
 if 'requests.exceptions' not in sys.modules:
-    sys.modules['requests.exceptions'] = sys.modules['requests'].exceptions
+    req_mod = sys.modules['requests']
+    if not hasattr(req_mod, 'exceptions'):
+        # requests was installed as a bare stub — attach our exceptions submodule
+        req_mod = _build_requests_stub()
+        sys.modules['requests'] = req_mod
+    sys.modules['requests.exceptions'] = req_mod.exceptions
 
 if 'keyring' not in sys.modules:
     sys.modules['keyring'] = _build_keyring_stub()
@@ -117,8 +122,10 @@ def _load_pipeline_module(module_filename, fake_root):
 
 
 # ---------------------------------------------------------------------------
-# reasoning_utils — import at module level (safe: no dangerous top-level I/O)
+# reasoning_utils — force-load the real module regardless of any stub that
+# prior test files (e.g. hook tests) may have installed in sys.modules.
 # ---------------------------------------------------------------------------
+sys.modules.pop('reasoning_utils', None)
 import reasoning_utils as ru
 
 # Convenience aliases for patching at the module where the name is bound
