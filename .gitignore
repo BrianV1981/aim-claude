@@ -1,5 +1,7 @@
-# Claude Code
+# Claude Code — ignore personal config but track project commands
 .claude/
+!.claude/commands/
+!.claude/commands/**
 memory/
 
 # WSL artifacts
