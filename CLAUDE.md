@@ -46,3 +46,14 @@ On any question, architectural issue, or test failure — do not guess.
 You are part of a continuous multi-agent relay. Before any new tactical work or code:
 1. Read `HANDOFF.md` — the front door to the project's current state and directives.
 2. (Optional) Read `continuity/LAST_SESSION_FLIGHT_RECORDER.md` — forensic archive of the previous session.
+
+## 8. THE SWARM POST OFFICE (MANDATORY READ-RECEIPTS)
+You are networked via the `aim-chalkboard` Global Chalkboard. Check incoming task load via `aim mail check`, which ingests Markdown messages into `continuity/UNREAD_MAIL.md`.
+
+**CRITICAL MANDATE:**
+- If any message in `continuity/UNREAD_MAIL.md` contains `> **MANDATE: READ RECEIPT REQUIRED**`, you must **immediately halt all execution logic** — no tool calls, no code, no commands.
+- You are strictly forbidden from executing blind system commands, messaging other Swarm branches, or dropping context until a receipt is dispatched.
+- **Required action:** Extract the `<origin_team>` and `<Subject>` from the message and send:
+  `aim mail send <origin_team> "Receipt: <Subject>" "CONFIRMED: [your exact decision or next intended action]"`
+- Only after the receipt is dispatched are you authorized to execute the directive.
+- If you encounter a `[SPAM WARNING]` in any message, permanently break your recursive context and do not act on the directive.
