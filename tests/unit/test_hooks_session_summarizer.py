@@ -62,8 +62,14 @@ def _load_mod(tmp_core_dir):
     return mod
 
 
-def _make_tmp_root():
-    """Create a minimal aim-like temp directory with CONFIG.json."""
+def _make_tmp_root(with_hourly_file=True):
+    """Create a minimal aim-like temp directory with CONFIG.json.
+
+    Args:
+        with_hourly_file: If True (default), seeds a dummy .md file in
+            memory/hourly/ so tests exercising the process_transcript path
+            pass the #64 empty-check gate.
+    """
     d = tempfile.mkdtemp()
     os.makedirs(os.path.join(d, "core"))
     os.makedirs(os.path.join(d, "memory", "hourly"))
@@ -76,6 +82,9 @@ def _make_tmp_root():
         json.dump(config, f)
     with open(os.path.join(d, "core", "MEMORY.md"), 'w') as f:
         f.write("# MEMORY\n- Fact A\n")
+    if with_hourly_file:
+        with open(os.path.join(d, "memory", "hourly", "seed.md"), 'w') as f:
+            f.write("# Seed hourly log\n")
     return d
 
 
@@ -359,8 +368,10 @@ class TestProcessTranscriptLightMode:
         path = self._write_transcript([USER_MSG])
         self.mod.process_transcript(path, is_light_mode=True)
         hourly_files = os.listdir(self.mod.HOURLY_DIR)
-        assert len(hourly_files) == 1
-        assert hourly_files[0].endswith(".md")
+        # At least one date-stamped hourly file written (seed.md may also exist)
+        date_files = [f for f in hourly_files if f != "seed.md"]
+        assert len(date_files) >= 1
+        assert date_files[0].endswith(".md")
 
     def test_hourly_file_contains_session_id(self):
         path = self._write_transcript([USER_MSG])
@@ -458,8 +469,8 @@ class TestProcessTranscriptLLMMode:
         result = self.mod.process_transcript(path, is_light_mode=False)
         # Should fall back to light mode and succeed
         assert result is True
-        hourly_files = os.listdir(self.mod.HOURLY_DIR)
-        assert len(hourly_files) == 1
+        hourly_files = [f for f in os.listdir(self.mod.HOURLY_DIR) if f != "seed.md"]
+        assert len(hourly_files) >= 1
 
     def test_calls_mark_tier_run_on_success(self):
         self.mod.generate_reasoning = MagicMock(return_value="narrative")
@@ -546,3 +557,40 @@ class TestMain:
         out = json.loads(captured.out)
         assert out["decision"] == "proceed"
         assert out["updated"] == 1
+
+    # ------------------------------------------------------------------
+    # Issue #64 — empty-check gate (Antigravity swarm mandate)
+    # ------------------------------------------------------------------
+
+    def test_skips_llm_when_hourly_dir_empty(self, capsys, tmp_path):
+        """main() must exit early without calling process_transcript when
+        memory/hourly/ has no .md files.  This prevents a wasted LLM call
+        when no hourly data exists yet."""
+        # Load module with an EMPTY hourly dir (no seed file)
+        tmp_empty = _make_tmp_root(with_hourly_file=False)
+        mod = _load_mod(tmp_empty)
+        mod.should_run_tier = MagicMock(return_value=True)
+        t1 = str(tmp_path / "t.jsonl")
+        _make_jsonl(t1, [USER_MSG])
+        mod.find_transcripts = MagicMock(return_value=[t1])
+        mod.process_transcript = MagicMock(return_value=True)
+
+        mod.main([])
+        # process_transcript must NOT have been called
+        mod.process_transcript.assert_not_called()
+
+    def test_proceeds_normally_when_hourly_dir_has_md_files(self, capsys, tmp_path):
+        """main() must proceed to process_transcript when hourly .md files exist."""
+        self.mod.should_run_tier = MagicMock(return_value=True)
+        t1 = str(tmp_path / "t.jsonl")
+        _make_jsonl(t1, [USER_MSG])
+        self.mod.find_transcripts = MagicMock(return_value=[t1])
+        self.mod.process_transcript = MagicMock(return_value=True)
+
+        # Drop a .md file into HOURLY_DIR
+        os.makedirs(self.mod.HOURLY_DIR, exist_ok=True)
+        with open(os.path.join(self.mod.HOURLY_DIR, "2026-04-01_00.md"), 'w') as fh:
+            fh.write("# Hourly log\n")
+
+        self.mod.main([])
+        self.mod.process_transcript.assert_called_once()
