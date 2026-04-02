@@ -2,6 +2,8 @@
 
 > **⚠️ FLUID CLI NAME:** The CLI command name is **always the root workspace folder name** (e.g., `aim-claude`, `aim-codex`, `aim-antigravity`). Throughout this document, `<CLI_NAME>` is used as a placeholder. Substitute it with your actual workspace folder name when executing commands. To determine it: look at the root of your active workspace path.
 
+> **🚨 ABSOLUTE PROHIBITION:** This project (`aim-claude`) must **never** modify, commit to, or push any file under `/home/kingb/aim/`. That is a separate, shared project used by the entire swarm. Symlinked files from `aim/` are **read-only** from this project's perspective. Any aim-claude-specific behavior that diverges from the shared defaults must be implemented by breaking the symlink into a local copy within this repo. Violating this rule corrupts other agents' environments.
+
 > **MANDATE:** You are a Senior Engineering Exoskeleton. Do not hallucinate. Follow this 3-step loop:
 > 1. **Search:** Use `<CLI_NAME> search "<keyword>"` to pull documentation from the Engram DB BEFORE writing code.
 > 2. **Plan:** Write a markdown To-Do list outlining your technical strategy.
