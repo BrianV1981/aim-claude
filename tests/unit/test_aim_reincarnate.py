@@ -262,6 +262,51 @@ class TestReincarnateScrivenerPipeline(unittest.TestCase):
                       "session_summarizer must be invoked with --light flag")
 
 
+class TestReincarnateGameplanNotOverwritten(unittest.TestCase):
+    """Issue #77: aim_reincarnate.py must NOT pass intent to handoff_pulse_generator.py.
+    The gameplan is written by the live agent (via /reincarnation command) before the
+    script runs. Passing intent as argv would overwrite it with a cold LLM analysis."""
+
+    def setUp(self):
+        self.mod = _load_reincarnate()
+
+    def _run_main_mocked(self):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            result = MagicMock()
+            result.stdout = ""
+            result.returncode = 0
+            return result
+
+        with patch("builtins.input", return_value="test intent"), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"):
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+        return calls
+
+    def test_pulse_generator_called_without_intent_arg(self):
+        """handoff_pulse_generator.py must be called with no extra args — the live
+        agent owns the gameplan; passing intent would trigger a cold LLM overwrite."""
+        calls = self._run_main_mocked()
+        pulse_call = next(
+            (c for c in calls if "handoff_pulse_generator" in str(c)), None
+        )
+        self.assertIsNotNone(pulse_call, "handoff_pulse_generator.py was never called")
+        # The call list should be [venv_python, script_path] — no intent appended
+        self.assertEqual(
+            len(pulse_call), 2,
+            f"handoff_pulse_generator.py must be called with no extra args, got: {pulse_call}"
+        )
+
+
 class TestReincarnateClaudeHandoff(unittest.TestCase):
     """Issue #75: aim_reincarnate.py must spawn claude (not gemini) and
     reference CLAUDE.md in the wake-up prompt."""
