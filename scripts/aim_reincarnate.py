@@ -62,7 +62,7 @@ def main():
 
     try:
         subprocess.run(
-            [venv_python, os.path.join(AIM_ROOT, "src", "handoff_pulse_generator.py")],
+            [venv_python, os.path.join(AIM_ROOT, "scripts", "handoff_pulse_claude.py")],
             cwd=AIM_ROOT, check=True
         )
     except subprocess.CalledProcessError as e:

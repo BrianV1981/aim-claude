@@ -60,15 +60,15 @@ class TestReincarnateIssueTrackerSync(unittest.TestCase):
         return calls
 
     def test_sync_issue_tracker_called_before_pulse(self):
-        """sync_issue_tracker.py must appear in subprocess calls before handoff_pulse_generator.py."""
+        """sync_issue_tracker.py must appear in subprocess calls before handoff_pulse_claude.py."""
         calls = self._run_main_mocked()
         flat = [str(c) for c in calls]
         sync_idx = next((i for i, c in enumerate(flat) if "sync_issue_tracker" in c), None)
-        pulse_idx = next((i for i, c in enumerate(flat) if "handoff_pulse_generator" in c), None)
+        pulse_idx = next((i for i, c in enumerate(flat) if "handoff_pulse_claude" in c), None)
         self.assertIsNotNone(sync_idx, "sync_issue_tracker.py was never called during reincarnation")
-        self.assertIsNotNone(pulse_idx, "handoff_pulse_generator.py was never called during reincarnation")
+        self.assertIsNotNone(pulse_idx, "handoff_pulse_claude.py was never called during reincarnation")
         self.assertLess(sync_idx, pulse_idx,
-                        "sync_issue_tracker must be called BEFORE handoff_pulse_generator")
+                        "sync_issue_tracker must be called BEFORE handoff_pulse_claude")
 
     def test_sync_failure_is_non_fatal(self):
         """If sync_issue_tracker fails, reincarnation should continue (not abort)."""
@@ -78,7 +78,7 @@ class TestReincarnateIssueTrackerSync(unittest.TestCase):
         )
         flat = [str(c) for c in calls]
         # Pulse should still have been called despite sync failure
-        pulse_called = any("handoff_pulse_generator" in c for c in flat)
+        pulse_called = any("handoff_pulse_claude" in c for c in flat)
         self.assertTrue(pulse_called,
                         "Reincarnation aborted after sync failure — sync must be non-fatal")
 
@@ -89,7 +89,7 @@ class TestReincarnateIssueTrackerSync(unittest.TestCase):
             sync_side_effect=subprocess.TimeoutExpired("sync_issue_tracker.py", 15)
         )
         flat = [str(c) for c in calls]
-        pulse_called = any("handoff_pulse_generator" in c for c in flat)
+        pulse_called = any("handoff_pulse_claude" in c for c in flat)
         self.assertTrue(pulse_called,
                         "Reincarnation aborted after sync timeout — must be non-fatal")
 
@@ -142,7 +142,7 @@ class TestReincarnateCliArg(unittest.TestCase):
         calls, mock_input = self._run_main_with_argv(["Fix", "issue", "42"])
         mock_input.assert_not_called()
         flat = [str(c) for c in calls]
-        pulse_called = any("handoff_pulse_generator" in c for c in flat)
+        pulse_called = any("handoff_pulse_claude" in c for c in flat)
         self.assertTrue(pulse_called)
 
     def test_no_argv_falls_back_to_input(self):
@@ -211,15 +211,15 @@ class TestReincarnateScrivenerPipeline(unittest.TestCase):
         )
 
     def test_summarizer_called_before_pulse(self):
-        """session_summarizer must run before handoff_pulse_generator (step 0.5 < step 1)."""
+        """session_summarizer must run before handoff_pulse_claude (step 0.5 < step 1)."""
         calls = self._run_main_mocked()
         flat = [str(c) for c in calls]
         summ_idx = next((i for i, c in enumerate(flat) if "session_summarizer" in c), None)
-        pulse_idx = next((i for i, c in enumerate(flat) if "handoff_pulse_generator" in c), None)
+        pulse_idx = next((i for i, c in enumerate(flat) if "handoff_pulse_claude" in c), None)
         self.assertIsNotNone(summ_idx, "session_summarizer.py never called")
-        self.assertIsNotNone(pulse_idx, "handoff_pulse_generator.py never called")
+        self.assertIsNotNone(pulse_idx, "handoff_pulse_claude.py never called")
         self.assertLess(summ_idx, pulse_idx,
-                        "session_summarizer must run BEFORE handoff_pulse_generator")
+                        "session_summarizer must run BEFORE handoff_pulse_claude")
 
     def test_summarizer_called_after_sync(self):
         """session_summarizer must run after sync_issue_tracker (step 0 < step 0.5)."""
@@ -240,7 +240,7 @@ class TestReincarnateScrivenerPipeline(unittest.TestCase):
         )
         flat = [str(c) for c in calls]
         self.assertTrue(
-            any("handoff_pulse_generator" in c for c in flat),
+            any("handoff_pulse_claude" in c for c in flat),
             "Reincarnation aborted after summarizer failure — must be non-fatal"
         )
 
@@ -262,8 +262,57 @@ class TestReincarnateScrivenerPipeline(unittest.TestCase):
                       "session_summarizer must be invoked with --light flag")
 
 
+class TestReincarnateUsesLocalPulseScript(unittest.TestCase):
+    """Issue #78: aim_reincarnate.py must call handoff_pulse_claude.py (local,
+    Claude Code JSONL) not handoff_pulse_claude.py (shared, Gemini JSON)."""
+
+    def setUp(self):
+        self.mod = _load_reincarnate()
+
+    def _run_main_mocked(self):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            result = MagicMock()
+            result.stdout = ""
+            result.returncode = 0
+            return result
+
+        with patch("builtins.input", return_value="test intent"), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"):
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+        return calls
+
+    def test_calls_local_pulse_script_not_shared(self):
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        self.assertTrue(
+            any("handoff_pulse_claude" in c for c in flat),
+            "aim_reincarnate.py must call handoff_pulse_claude.py (local)"
+        )
+        self.assertFalse(
+            any("handoff_pulse_generator" in c for c in flat),
+            "aim_reincarnate.py must NOT call handoff_pulse_generator.py (shared/Gemini)"
+        )
+
+    def test_pulse_script_in_scripts_dir(self):
+        calls = self._run_main_mocked()
+        flat = [str(c) for c in calls]
+        pulse_call = next((c for c in flat if "handoff_pulse_claude" in c), None)
+        self.assertIsNotNone(pulse_call)
+        self.assertIn("scripts", pulse_call)
+
+
 class TestReincarnateGameplanNotOverwritten(unittest.TestCase):
-    """Issue #77: aim_reincarnate.py must NOT pass intent to handoff_pulse_generator.py.
+    """Issue #77: aim_reincarnate.py must NOT pass intent to handoff_pulse_claude.py.
     The gameplan is written by the live agent (via /reincarnation command) before the
     script runs. Passing intent as argv would overwrite it with a cold LLM analysis."""
 
@@ -293,17 +342,17 @@ class TestReincarnateGameplanNotOverwritten(unittest.TestCase):
         return calls
 
     def test_pulse_generator_called_without_intent_arg(self):
-        """handoff_pulse_generator.py must be called with no extra args — the live
+        """handoff_pulse_claude.py must be called with no extra args — the live
         agent owns the gameplan; passing intent would trigger a cold LLM overwrite."""
         calls = self._run_main_mocked()
         pulse_call = next(
-            (c for c in calls if "handoff_pulse_generator" in str(c)), None
+            (c for c in calls if "handoff_pulse_claude" in str(c)), None
         )
-        self.assertIsNotNone(pulse_call, "handoff_pulse_generator.py was never called")
+        self.assertIsNotNone(pulse_call, "handoff_pulse_claude.py was never called")
         # The call list should be [venv_python, script_path] — no intent appended
         self.assertEqual(
             len(pulse_call), 2,
-            f"handoff_pulse_generator.py must be called with no extra args, got: {pulse_call}"
+            f"handoff_pulse_claude.py must be called with no extra args, got: {pulse_call}"
         )
 
 
