@@ -262,5 +262,63 @@ class TestReincarnateScrivenerPipeline(unittest.TestCase):
                       "session_summarizer must be invoked with --light flag")
 
 
+class TestReincarnateClaudeHandoff(unittest.TestCase):
+    """Issue #75: aim_reincarnate.py must spawn claude (not gemini) and
+    reference CLAUDE.md in the wake-up prompt."""
+
+    def setUp(self):
+        self.mod = _load_reincarnate()
+
+    def _run_main_mocked(self):
+        calls = []
+        send_keys_calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            if "send-keys" in str(cmd):
+                send_keys_calls.append(cmd)
+            result = MagicMock()
+            result.stdout = "test-session"
+            result.returncode = 0
+            return result
+
+        with patch("builtins.input", return_value="test intent"), \
+             patch.object(self.mod.subprocess, "run", side_effect=fake_run), \
+             patch.object(self.mod.time, "sleep"), \
+             patch.object(self.mod.os, "environ", {"TMUX": ""}), \
+             patch.object(self.mod.os, "getppid", return_value=1), \
+             patch.object(self.mod.os, "kill"):
+            try:
+                self.mod.main()
+            except (SystemExit, Exception):
+                pass
+        return calls, send_keys_calls
+
+    def test_spawns_claude_not_gemini(self):
+        """tmux new-session must use 'claude' as the CLI command, not 'gemini'."""
+        calls, _ = self._run_main_mocked()
+        spawn_call = next(
+            (c for c in calls if "new-session" in str(c)), None
+        )
+        self.assertIsNotNone(spawn_call, "tmux new-session was never called")
+        self.assertIn("claude", spawn_call,
+                      "tmux must spawn 'claude' CLI, not 'gemini'")
+        self.assertNotIn("gemini", spawn_call,
+                         "tmux must NOT spawn 'gemini' — wrong agent for aim-claude")
+
+    def test_wakeup_prompt_references_claude_md(self):
+        """Wake-up prompt injected into tmux must reference CLAUDE.md, not GEMINI.md."""
+        calls, send_keys_calls = self._run_main_mocked()
+        wake_call = next(
+            (c for c in calls if "send-keys" in str(c)), None
+        )
+        self.assertIsNotNone(wake_call, "tmux send-keys was never called")
+        flat = str(wake_call)
+        self.assertIn("CLAUDE.md", flat,
+                      "Wake-up prompt must reference CLAUDE.md")
+        self.assertNotIn("GEMINI.md", flat,
+                         "Wake-up prompt must NOT reference GEMINI.md")
+
+
 if __name__ == "__main__":
     unittest.main()
