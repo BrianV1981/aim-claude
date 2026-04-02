@@ -40,3 +40,6 @@ continuity/*.jsonl
 # Env
 .env
 .env.*
+
+# Swarm workspace (cloned external repos)
+workspace/
