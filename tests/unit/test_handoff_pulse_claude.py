@@ -256,6 +256,57 @@ class TestWriteHandoff(unittest.TestCase):
         self.assertEqual(strip(c1), strip(c2))
 
 
+class TestWriteFlightRecorder(unittest.TestCase):
+    def setUp(self):
+        self.tmp = _make_tmp_root()
+        self.mod = _load_mod(self.tmp)
+
+    def test_writes_flight_recorder_file(self):
+        turns = [{"role": "user", "text": "hello", "timestamp": "T1"},
+                 {"role": "assistant", "text": "hi back", "timestamp": "T2"}]
+        self.mod.write_flight_recorder(turns)
+        fr_path = os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")
+        self.assertTrue(os.path.exists(fr_path))
+
+    def test_flight_recorder_contains_all_turns(self):
+        turns = [{"role": "user", "text": f"msg {i}", "timestamp": f"T{i}"} for i in range(20)]
+        self.mod.write_flight_recorder(turns)
+        content = open(os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")).read()
+        for i in range(20):
+            self.assertIn(f"msg {i}", content)
+
+    def test_flight_recorder_has_header(self):
+        turns = [{"role": "user", "text": "hello", "timestamp": "T1"}]
+        self.mod.write_flight_recorder(turns)
+        content = open(os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")).read()
+        self.assertIn("Flight Recorder", content)
+
+    def test_flight_recorder_rolling_delta(self):
+        """When handoff_context_lines > 0, only the last N lines are kept."""
+        turns = [{"role": "user", "text": f"msg {i}", "timestamp": f"T{i}"} for i in range(50)]
+        self.mod.write_flight_recorder(turns, context_lines=10)
+        content = open(os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")).read()
+        self.assertIn("Rolling Delta", content)
+        # The body (after header) should be at most 10 lines
+        body_lines = [l for l in content.splitlines() if l.strip() and not l.startswith("#") and not l.startswith("*")]
+        self.assertLessEqual(len(body_lines), 10)
+
+    def test_flight_recorder_full_history_when_zero(self):
+        turns = [{"role": "user", "text": f"msg {i}", "timestamp": f"T{i}"} for i in range(20)]
+        self.mod.write_flight_recorder(turns, context_lines=0)
+        content = open(os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")).read()
+        self.assertIn("Full History", content)
+        self.assertIn("msg 0", content)
+        self.assertIn("msg 19", content)
+
+    def test_flight_recorder_empty_turns(self):
+        self.mod.write_flight_recorder([])
+        fr_path = os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")
+        self.assertTrue(os.path.exists(fr_path))
+        content = open(fr_path).read()
+        self.assertIn("Flight Recorder", content)
+
+
 class TestMainPulse(unittest.TestCase):
     def setUp(self):
         self.tmp = _make_tmp_root()
@@ -274,6 +325,26 @@ class TestMainPulse(unittest.TestCase):
         self.mod.find_transcripts = MagicMock(return_value=[])
         self.mod.main()
         self.assertTrue(os.path.exists(self.mod.HANDOFF_PATH))
+
+    def test_main_writes_flight_recorder(self):
+        """main() must write LAST_SESSION_FLIGHT_RECORDER.md."""
+        jsonl_path = os.path.join(self.tmp, "session.jsonl")
+        turns = [_user(f"turn {i}") for i in range(20)]
+        _make_jsonl(jsonl_path, turns)
+        self.mod.find_transcripts = MagicMock(return_value=[jsonl_path])
+        self.mod.main()
+        fr_path = os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")
+        self.assertTrue(os.path.exists(fr_path), "main() did not write LAST_SESSION_FLIGHT_RECORDER.md")
+        content = open(fr_path).read()
+        self.assertIn("Flight Recorder", content)
+        self.assertIn("turn 0", content)
+
+    def test_main_writes_flight_recorder_even_without_transcripts(self):
+        """Flight recorder should still be written (empty) when no transcripts found."""
+        self.mod.find_transcripts = MagicMock(return_value=[])
+        self.mod.main()
+        fr_path = os.path.join(self.tmp, "continuity", "LAST_SESSION_FLIGHT_RECORDER.md")
+        self.assertTrue(os.path.exists(fr_path))
 
 
 if __name__ == "__main__":
