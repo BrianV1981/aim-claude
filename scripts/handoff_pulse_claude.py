@@ -8,7 +8,8 @@ Responsibilities:
   1. Find the current session JSONL from ~/.claude/projects/<hash>/
   2. Extract the last 5 user+assistant turns (no LLM — pure mechanical extraction)
   3. Write CURRENT_PULSE.md
-  4. Refresh HANDOFF.md from a static template (timestamp only changes)
+  4. Write LAST_SESSION_FLIGHT_RECORDER.md (full session history or rolling delta)
+  5. Refresh HANDOFF.md from a static template (timestamp only changes)
 
 Anti-cannibalization: if the newest JSONL has < 15 lines (e.g. a fresh wake-up
 session), use the previous one so we don't overwrite a full history with a stub.
@@ -205,6 +206,35 @@ def write_current_pulse(turns):
     _atomic_write(os.path.join(CONTINUITY_DIR, "CURRENT_PULSE.md"), "\n".join(lines))
 
 
+def write_flight_recorder(turns, context_lines=0):
+    """Write LAST_SESSION_FLIGHT_RECORDER.md from extracted turns — no LLM.
+
+    Args:
+        turns: List of dicts {role, text, timestamp} — full session history.
+        context_lines: 0 = full history, >0 = rolling delta (last N lines of body).
+    """
+    body_lines = []
+    for turn in turns:
+        role_label = "USER" if turn["role"] == "user" else "A.I.M."
+        ts = turn.get("timestamp", "")
+        body_lines.append(f"### {role_label} ({ts})")
+        body_lines.append(turn["text"])
+        body_lines.append("")
+
+    if context_lines > 0 and len(body_lines) > context_lines:
+        truncated = body_lines[-context_lines:]
+        header = "# A.I.M. Session Flight Recorder (Rolling Delta)\n"
+        header += f"*This is a noise-reduced flight recorder showing only the last {context_lines} lines. NOT automatically injected into LLM context.*\n\n"
+        content = header + "\n".join(truncated) + "\n"
+    else:
+        header = "# A.I.M. Session Flight Recorder (Full History)\n"
+        header += "*This is a noise-reduced flight recorder showing the entire session. NOT automatically injected into LLM context.*\n\n"
+        content = header + "\n".join(body_lines) + "\n"
+
+    os.makedirs(CONTINUITY_DIR, exist_ok=True)
+    _atomic_write(os.path.join(CONTINUITY_DIR, "LAST_SESSION_FLIGHT_RECORDER.md"), content)
+
+
 def write_handoff():
     """Refresh HANDOFF.md from the static template with a current timestamp."""
     content = HANDOFF_TEMPLATE.format(
@@ -222,13 +252,26 @@ def main():
 
     if transcript:
         turns = extract_last_turns(transcript, n=5)
+        all_turns = extract_last_turns(transcript, n=sys.maxsize)
     else:
         turns = []
+        all_turns = []
         print("[handoff_pulse_claude] No JSONL transcripts found — writing empty pulse.")
 
+    # Load configurable line limit for flight recorder (0 = full history)
+    context_lines = 0
+    config_path = os.path.join(AIM_ROOT, "core", "CONFIG.json")
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        context_lines = config.get("settings", {}).get("handoff_context_lines", 0)
+    except Exception:
+        pass
+
     write_current_pulse(turns)
+    write_flight_recorder(all_turns, context_lines=context_lines)
     write_handoff()
-    print("[handoff_pulse_claude] CURRENT_PULSE.md and HANDOFF.md refreshed.")
+    print("[handoff_pulse_claude] CURRENT_PULSE.md, LAST_SESSION_FLIGHT_RECORDER.md, and HANDOFF.md refreshed.")
 
 
 if __name__ == "__main__":
