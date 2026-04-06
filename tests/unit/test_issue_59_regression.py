@@ -17,7 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 AIM_CLAUDE_ROOT = str(Path(__file__).parent.parent.parent)
-AIM_SKILLS = os.path.join(AIM_CLAUDE_ROOT, "skills")  # symlink → /home/kingb/aim/skills
+AIM_SKILLS = os.path.join(AIM_CLAUDE_ROOT, "skills")  # local directory (decoupled from shared aim/)
 
 
 # ---------------------------------------------------------------------------
@@ -72,8 +72,8 @@ def _assert_aim_root_correct(mod, label):
         f"{label}: _find_aim_root() returned {result!r}, expected {AIM_CLAUDE_ROOT!r}. "
         "The __file__-parent bug may have regressed."
     )
-    # Verify it's NOT the bare aim/ repo
-    aim_bare = str(Path(AIM_SKILLS).resolve().parent)  # /home/kingb/aim
+    # Verify it's NOT the bare aim/ repo (the shared swarm repo)
+    aim_bare = "/home/kingb/aim"
     assert result != aim_bare, (
         f"{label}: resolved to bare aim/ repo instead of aim-claude/"
     )
@@ -131,7 +131,7 @@ class TestProposeMemoryCommitAimRoot:
             root = mod._find_aim_root()
         expected_cli = os.path.join(root, "scripts", "aim_cli.py")
         # The script should not be pointing into bare aim/
-        aim_bare = str(Path(AIM_SKILLS).resolve().parent)
+        aim_bare = "/home/kingb/aim"
         assert not expected_cli.startswith(aim_bare + "/scripts"), (
             f"aim_cli path resolves into bare aim/ repo: {expected_cli!r}"
         )
