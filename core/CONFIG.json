@@ -1,0 +1,107 @@
+{
+  "paths": {
+    "aim_root": "/home/kingb/aim-claude",
+    "core_dir": "/home/kingb/aim-claude/core",
+    "docs_dir": "/home/kingb/aim-claude/docs",
+    "hooks_dir": "/home/kingb/aim-claude/hooks",
+    "memory_dir": "/home/kingb/aim-claude/memory",
+    "archive_raw_dir": "/home/kingb/aim-claude/archive_raw",
+    "archive_index_dir": "/home/kingb/aim-claude/archive_index",
+    "continuity_dir": "/home/kingb/aim-claude/continuity",
+    "src_dir": "/home/kingb/aim-claude/src",
+    "tmp_chats_dir": "/home/kingb/.claude/projects/-home-kingb-aim-claude"
+  },
+  "models": {
+    "embedding_provider": "local",
+    "embedding": "nomic-embed-text",
+    "embedding_endpoint": "http://localhost:11434/api/embeddings",
+    "tiers": {
+      "default_reasoning": {
+        "provider": "local",
+        "model": "gemma4:e4b",
+        "endpoint": "http://localhost:11434/api/generate",
+        "auth_type": "api_key"
+      },
+      "tier1": {
+        "provider": "local",
+        "model": "gemma4:e4b",
+        "endpoint": "http://localhost:11434/api/generate",
+        "auth_type": "api_key"
+      },
+      "tier2": {
+        "provider": "google",
+        "model": "gemini-3-flash-preview",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "OAuth (System Default / CLI)"
+      },
+      "tier3": {
+        "provider": "google",
+        "model": "gemini-3.1-pro-preview",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "OAuth (System Default / CLI)"
+      },
+      "tier4": {
+        "provider": "google",
+        "model": "gemini-3.1-pro-preview",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "OAuth (System Default / CLI)"
+      },
+      "tier5": {
+        "provider": "google",
+        "model": "gemini-3.1-pro-preview",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "OAuth (System Default / CLI)"
+      },
+      "librarian": {
+        "provider": "google",
+        "model": "gemini-flash-latest",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "API Key"
+      },
+      "chancellor": {
+        "provider": "google",
+        "model": "gemini-flash-latest",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "API Key"
+      },
+      "dean": {
+        "provider": "google",
+        "model": "gemini-flash-latest",
+        "endpoint": "https://generativelanguage.googleapis.com",
+        "auth_type": "API Key"
+      }
+    }
+  },
+  "settings": {
+    "allowed_root": "/home/kingb/aim-claude",
+    "swarm_enabled": false,
+    "semantic_pruning_threshold": 0.85,
+    "scrivener_interval_minutes": 60,
+    "archive_retention_days": 0,
+    "sentinel_mode": "full",
+    "obsidian_vault_path": "",
+    "auto_distill_tier": "T3",
+    "handoff_context_tail": 30,
+    "auto_rebirth": false,
+    "handoff_context_lines": 0,
+    "max_download_speed": "0",
+    "seeding_ratio": 1.0,
+    "rpc_port": 6800,
+    "cognitive_mantra": {
+      "enabled": true,
+      "whisper_interval": 10,
+      "mantra_interval": 25
+    },
+    "cognitive_mode": "monolithic"
+  },
+  "memory_pipeline": {
+    "intervals": {
+      "tier1": 1,
+      "tier2": 12,
+      "tier3": 24,
+      "tier4": 72,
+      "tier5": 144
+    },
+    "cleanup_mode": "archive"
+  }
+}

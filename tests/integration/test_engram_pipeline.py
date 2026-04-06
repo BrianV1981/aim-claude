@@ -324,7 +324,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
         retriever = self._load_retriever()
         fake_vec = query_vec if query_vec is not None else _unit_vec(0)
 
-        with patch.object(retriever, "load_knowledge_provider", return_value=self.db), \
+        with patch.object(retriever, "ForensicDB", return_value=self.db), \
              patch.object(retriever, "get_embedding", return_value=fake_vec), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search(query, top_k=top_k)
@@ -341,7 +341,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
     def test_no_results_message_when_db_empty(self):
         empty_db = ForensicDB(custom_path=":memory:")
         retriever = self._load_retriever()
-        with patch.object(retriever, "load_knowledge_provider", return_value=empty_db), \
+        with patch.object(retriever, "ForensicDB", return_value=empty_db), \
              patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search("anything", top_k=5)
@@ -350,7 +350,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
 
     def test_failed_embedding_prints_error(self):
         retriever = self._load_retriever()
-        with patch.object(retriever, "load_knowledge_provider", return_value=self.db), \
+        with patch.object(retriever, "ForensicDB", return_value=self.db), \
              patch.object(retriever, "get_embedding", return_value=None), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search("query", top_k=5)
@@ -363,7 +363,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
         """
         retriever = self._load_retriever()
         spy_db = MagicMock(wraps=self.db)
-        with patch.object(retriever, "load_knowledge_provider", return_value=spy_db), \
+        with patch.object(retriever, "ForensicDB", return_value=spy_db), \
              patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
              patch("sys.stdout", new_callable=io.StringIO):
             retriever.perform_search("hybrid", top_k=5)
@@ -378,7 +378,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
             {"type": "session", "content": "Extra fragment content.", "embedding": _unit_vec(2), "timestamp": None}
         ])
         retriever = self._load_retriever()
-        with patch.object(retriever, "load_knowledge_provider", return_value=self.db), \
+        with patch.object(retriever, "ForensicDB", return_value=self.db), \
              patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search("query", top_k=1)
@@ -404,7 +404,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
             }
         ])
         retriever = self._load_retriever()
-        with patch.object(retriever, "load_knowledge_provider", return_value=self.db), \
+        with patch.object(retriever, "ForensicDB", return_value=self.db), \
              patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search("hybrid", top_k=20)
