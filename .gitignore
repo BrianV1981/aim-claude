@@ -27,11 +27,8 @@ build/
 .DS_Store
 Thumbs.db
 
-# Symlinked backend (shared with /home/kingb/aim/)
-src
+# Data directories (not tracked)
 archive
-core
-skills
 
 # Runtime state (hooks)
 continuity/*.json
