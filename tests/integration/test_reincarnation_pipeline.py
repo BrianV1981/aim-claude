@@ -307,44 +307,10 @@ class TestHandoffPulseGeneratorFileWrites:
         assert "tmp_exists:False" in result.stdout, \
             f".tmp artifact was not cleaned up. Output: {result.stdout}"
 
-    def test_reincarnation_gameplan_written_with_mocked_llm(self, tmp_path):
-        """
-        generate_reincarnation_gameplan() writes REINCARNATION_GAMEPLAN.md
-        when generate_reasoning() is mocked to return a fixed string.
-        """
-        continuity_dir = str(tmp_path / "continuity")
-        os.makedirs(continuity_dir)
-
-        wrapper = textwrap.dedent(f"""
-            import sys, os
-            sys.path.insert(0, {repr(SRC_DIR)})
-
-            # Mock generate_reasoning before importing the module
-            import reasoning_utils
-            reasoning_utils.generate_reasoning = lambda *a, **kw: "Mock gameplan content."
-
-            import handoff_pulse_generator as hpg
-            # Override continuity dir so output goes to tmp
-            hpg.CONTINUITY_DIR = {repr(continuity_dir)}
-
-            result = hpg.generate_reincarnation_gameplan(user_directive="Integration test run")
-            print("result:" + str(result))
-        """)
-        result = subprocess.run(
-            [PYTHON, "-c", wrapper],
-            capture_output=True,
-            text=True,
-            cwd=AIM_ROOT,
-        )
-        assert result.returncode == 0, f"Script failed:\n{result.stderr}"
-
-        gameplan_path = os.path.join(continuity_dir, "REINCARNATION_GAMEPLAN.md")
-        assert os.path.exists(gameplan_path), (
-            f"REINCARNATION_GAMEPLAN.md not created. stdout: {result.stdout}\nstderr: {result.stderr}"
-        )
-        content = open(gameplan_path).read()
-        assert "REINCARNATION GAMEPLAN" in content
-        assert "Integration test run" in content
+    # NOTE: test_reincarnation_gameplan_written_with_mocked_llm removed.
+    # The live agent now writes REINCARNATION_GAMEPLAN.md directly via
+    # /reincarnation command (PR #80). generate_reincarnation_gameplan()
+    # no longer exists in the pipeline.
 
     def test_flight_recorder_written_with_mocked_llm(self, tmp_path):
         """
