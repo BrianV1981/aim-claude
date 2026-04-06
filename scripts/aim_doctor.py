@@ -1,1 +1,0 @@
-/home/kingb/aim/scripts/aim_doctor.py

@@ -96,7 +96,7 @@ class TestHeartbeatFindAimRoot:
         mod = self._load()
         # The physical parent of src/ (via __file__) is /home/kingb/aim — not aim-claude.
         # If the fix is working, AIM_ROOT must be aim-claude, not bare aim.
-        aim_bare = str(Path(AIM_SRC).resolve().parent)  # /home/kingb/aim
+        aim_bare = "/home/kingb/aim"  # the shared swarm repo (must NOT resolve here)
         assert mod.AIM_ROOT != aim_bare, (
             "heartbeat.py resolved AIM_ROOT via __file__ (aim/), not cwd (aim-claude/)"
         )
