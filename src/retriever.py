@@ -45,6 +45,18 @@ if src_dir not in sys.path: sys.path.append(src_dir)
 from config_utils import CONFIG
 from plugins.datajack.forensic_utils import get_embedding, ForensicDB
 
+def apply_relevance_threshold(results, threshold=None):
+    """Prune results below the semantic_pruning_threshold.
+
+    Mandate/priority results are never pruned regardless of score.
+    A threshold of 0 disables pruning.
+    """
+    if threshold is None:
+        threshold = CONFIG.get("settings", {}).get("semantic_pruning_threshold", 0.85)
+    if threshold <= 0:
+        return results
+    return [r for r in results if r.get("priority") or r.get("score", 0) >= threshold]
+
 def get_fragment_hash(res):
     """Creates a unique fingerprint for a fragment to prevent de-duplication crashes."""
     content = res.get('content', '')
@@ -212,6 +224,9 @@ def perform_search(query, top_k=10, show_context=False):
 
     # Re-sort based on boosted scores
     final_results.sort(key=lambda x: x['score'], reverse=True)
+
+    # Apply relevance threshold — prune low-score noise (mandates bypass)
+    final_results = apply_relevance_threshold(final_results)
     final_results = final_results[:top_k]
 
     if not final_results:
