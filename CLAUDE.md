@@ -39,6 +39,7 @@ For project information, codebase context, or operating rules, use `<CLI_NAME> s
 Do not hallucinate knowledge — retrieve it.
 1. **Knowledge Map (`<CLI_NAME> map`):** Run first for a lightweight index of all loaded documentation titles.
 2. **Hybrid Search (`<CLI_NAME> search "query"`):** Extracts file contents using Semantic Search (vectors) for concepts and Lexical Search (FTS5 BM25) for exact strings (e.g., `<CLI_NAME> search "sys.monitoring"`).
+3. **DataJack Protocol (`<CLI_NAME> jack-in <cartridge>.engram`):** Load a pre-baked `.engram` cartridge into the Engram DB for instant domain-specific recall. Cartridges ship in `engrams/` and follow the v2 manifest schema (name, version, embedding_model, fragment_count). Use `<CLI_NAME> bake <docs_dir> <output>.engram` to create new cartridges.
 
 ## 6. THE REFLEX (ERROR RECOVERY)
 On any question, architectural issue, or test failure — do not guess.
