@@ -4,6 +4,7 @@ import sys
 import subprocess
 import time
 import signal
+import json
 
 def find_aim_root():
     current = os.path.abspath(os.getcwd())
@@ -15,18 +16,53 @@ def find_aim_root():
 
 AIM_ROOT = find_aim_root()
 
+def _load_handoff_config():
+    """Import handoff_config from src/."""
+    src_dir = os.path.join(AIM_ROOT, "src")
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    from handoff_config import resolve_target_agent, get_agent_config, DEFAULT_FALLBACK_AGENT
+    return resolve_target_agent, get_agent_config, DEFAULT_FALLBACK_AGENT
+
+
 def main():
     print("--- A.I.M. REINCARNATION PROTOCOL ---")
 
-    # Accept intent from CLI arg (for slash command / non-interactive use)
-    # or fall back to interactive input
-    if len(sys.argv) > 1:
-        user_injection = " ".join(sys.argv[1:])
+    # Parse CLI args: intent text and optional --agent override
+    cli_agent = None
+    args = sys.argv[1:]
+    intent_parts = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--agent" and i + 1 < len(args):
+            cli_agent = args[i + 1]
+            i += 2
+        else:
+            intent_parts.append(args[i])
+            i += 1
+
+    if intent_parts:
+        user_injection = " ".join(intent_parts)
         print(f"\n[!] Commander's Intent received: {user_injection}")
     else:
         print("\n[!] CONTEXT FADE DETECTED: We are initiating Reincarnation.")
         print("What is your 'Commander's Intent' for the next agent? (Your manual injection)")
         user_injection = input("Intent: ")
+
+    # Resolve target agent
+    resolve_target_agent, get_agent_config, DEFAULT_FALLBACK_AGENT = _load_handoff_config()
+    config_agent = None
+    try:
+        config_path = os.path.join(AIM_ROOT, "core", "CONFIG.json")
+        with open(config_path) as f:
+            config = json.load(f)
+        config_agent = config.get("reincarnation", {}).get("handoff_agent")
+    except Exception:
+        pass
+
+    target_agent = resolve_target_agent(cli_agent=cli_agent, config_agent=config_agent)
+    agent_cfg = get_agent_config(target_agent)
+    print(f"\n[!] Target agent: {target_agent} (cmd: {agent_cfg['cmd']})")
 
     venv_python = os.path.join(AIM_ROOT, "venv", "bin", "python3")
     if not os.path.exists(venv_python):
@@ -74,9 +110,9 @@ def main():
     session_name = f"aim_reincarnation_{int(time.time())}"
     
     try:
-        # Start a detached tmux session running the Claude Code CLI
+        # Start a detached tmux session running the target agent CLI
         subprocess.run(
-            ["tmux", "new-session", "-d", "-s", session_name, "-c", AIM_ROOT, "claude"],
+            ["tmux", "new-session", "-d", "-s", session_name, "-c", AIM_ROOT, agent_cfg["cmd"]],
             check=True
         )
     except FileNotFoundError:
@@ -92,7 +128,7 @@ def main():
     # Give the Claude Code CLI a few seconds to boot up inside tmux
     time.sleep(3)
 
-    wake_up_prompt = "Wake up. MANDATE: 1. Read CLAUDE.md and acknowledge your core constraints. 2. Read HANDOFF.md. 3. You must read continuity/REINCARNATION_GAMEPLAN.md, continuity/CURRENT_PULSE.md, and ISSUE_TRACKER.md before taking any action or responding."
+    wake_up_prompt = agent_cfg["wake_up"]
     try:
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, wake_up_prompt, "C-m"],
