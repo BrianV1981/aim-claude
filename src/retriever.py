@@ -6,6 +6,7 @@ import argparse
 import re
 import hashlib
 import math
+import sqlite3
 from datetime import datetime, timezone
 
 def calculate_temporal_decay(score, timestamp_str, decay_rate=0.01):
@@ -52,10 +53,38 @@ def get_fragment_hash(res):
     # Simple hash of content + metadata
     return hashlib.md5(f"{f_type}:{session}:{content[:500]}".encode()).hexdigest()
 
+def get_federated_dbs():
+    """Returns a list of all databases in the Federated Archipelago Model."""
+    return [
+        os.path.join(AIM_ROOT, "archive/project_core.db"),
+        os.path.join(AIM_ROOT, "archive/global_skills.db"),
+        os.path.join(AIM_ROOT, "archive/datajack_library.db"),
+        os.path.join(AIM_ROOT, "archive/subagent_ephemeral.db")
+    ]
+
+def get_aggregated_knowledge_map():
+    """Aggregates knowledge maps across all federated databases."""
+    k_map = {
+        "foundation_knowledge": [],
+        "expert_knowledge": [],
+        "session_history": []
+    }
+    for db_path in get_federated_dbs():
+        if not os.path.exists(db_path):
+            continue
+        try:
+            db = ForensicDB(db_path)
+            sub_map = db.get_knowledge_map()
+            k_map["foundation_knowledge"].extend(sub_map.get("foundation_knowledge", []))
+            k_map["expert_knowledge"].extend(sub_map.get("expert_knowledge", []))
+            k_map["session_history"].extend(sub_map.get("session_history", []))
+            db.close()
+        except sqlite3.OperationalError:
+            pass  # DB might be uninitialized
+    return k_map
+
 def print_knowledge_map():
-    db = ForensicDB()
-    k_map = db.get_knowledge_map()
-    db.close()
+    k_map = get_aggregated_knowledge_map()
     
     print("\n--- A.I.M. KNOWLEDGE MAP (Index of Keys) ---")
     
@@ -75,30 +104,69 @@ def print_knowledge_map():
         print(f"    (Use '{os.path.basename(AIM_ROOT)} search' with --session to narrow down specific events)")
 
     print(f"\nUse '{os.path.basename(AIM_ROOT)} search \"<filename>\" --full' to surgically recall specific keys.")
-def perform_search(query, top_k=10, show_context=False):
-    db = ForensicDB()
-    
-    # 1. MANDATE OVERRIDE (Keyword-First)
+def perform_search_internal(query, top_k=10):
+    """Federated search across all Archipelago databases. Returns raw results."""
     mandate_keywords = ["POLICY", "MANDATE", "SOUL", "TDD", "SENTINEL", "GUARDRAIL", "HANDBOOK"]
     found_mandates = []
-    if any(k in query.upper() for k in mandate_keywords):
-        for kw in mandate_keywords:
-            if kw in query.upper():
-                found_mandates.extend(db.search_by_source_keyword(kw))
+    results = []
 
-    # 2. SEMANTIC SEARCH (Vector-Second)
+    query_vec = get_embedding(query, task_type='RETRIEVAL_QUERY')
+    if not query_vec:
+        print("Error: Failed to vectorize query.")
+        return []
+
+    for db_path in get_federated_dbs():
+        if not os.path.exists(db_path):
+            continue
+        try:
+            db = ForensicDB(db_path)
+
+            if any(k in query.upper() for k in mandate_keywords):
+                for kw in mandate_keywords:
+                    if kw in query.upper():
+                        found_mandates.extend(db.search_by_source_keyword(kw))
+
+            db_results = db.search_fragments(query_vec, top_k=top_k * 2)
+            lexical_results = db.search_lexical(query, top_k=top_k * 2)
+
+            results.extend(db_results)
+            results.extend(lexical_results)
+
+            db.close()
+        except sqlite3.OperationalError:
+            pass  # DB might be uninitialized
+
+    return found_mandates + results
+
+def perform_search(query, top_k=10, show_context=False):
+    mandate_keywords = ["POLICY", "MANDATE", "SOUL", "TDD", "SENTINEL", "GUARDRAIL", "HANDBOOK"]
+    found_mandates = []
+    results = []
+
     query_vec = get_embedding(query, task_type='RETRIEVAL_QUERY')
     if not query_vec:
         print("Error: Failed to vectorize query.")
         return
 
-    results = db.search_fragments(query_vec, top_k=top_k * 2)
-    
-    # Phase 25: Hybrid Search (Lexical)
-    lexical_results = db.search_lexical(query, top_k=top_k * 2)
-    results.extend(lexical_results)
-    
-    db.close()
+    for db_path in get_federated_dbs():
+        if not os.path.exists(db_path):
+            continue
+        try:
+            db = ForensicDB(db_path)
+
+            if any(k in query.upper() for k in mandate_keywords):
+                for kw in mandate_keywords:
+                    if kw in query.upper():
+                        found_mandates.extend(db.search_by_source_keyword(kw))
+
+            db_results = db.search_fragments(query_vec, top_k=top_k * 2)
+            lexical_results = db.search_lexical(query, top_k=top_k * 2)
+            results.extend(db_results)
+            results.extend(lexical_results)
+
+            db.close()
+        except sqlite3.OperationalError:
+            pass  # DB might be uninitialized
 
     # 3. KNOWLEDGE PRIORITY WEIGHTING
     processed_hashes = set()
