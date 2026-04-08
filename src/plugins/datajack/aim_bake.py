@@ -20,6 +20,7 @@ if src_dir not in sys.path:
 
 from forensic_utils import ForensicDB
 from bootstrap_brain import index_file
+from cartridge_utils import generate_manifest
 
 def bake_cartridge(target_dir, output_file):
     print(f"\n--- A.I.M. DATAJACK FOUNDRY (Atomic Baking) ---")
@@ -90,12 +91,16 @@ def bake_cartridge(target_dir, output_file):
                     
         db.close()
         
-        # Write metadata.json with the payload hash
-        metadata = {
-            "type": "baked_cartridge",
-            "payload_hash": hasher.hexdigest(),
-            "fragments": fragments_added
-        }
+        # Write metadata.json with manifest + payload hash
+        cartridge_name = os.path.splitext(os.path.basename(output_file))[0]
+        metadata = generate_manifest(
+            name=cartridge_name,
+            version="1.0.0",
+            embedding_model="nomic-embed-text",
+            fragment_count=fragments_added,
+        )
+        metadata["type"] = "baked_cartridge"
+        metadata["payload_hash"] = hasher.hexdigest()
         with open(os.path.join(tmp_sync_dir, "metadata.json"), 'w') as f:
             json.dump(metadata, f, indent=2)
         

@@ -6,6 +6,7 @@ import json
 import hashlib
 import glob
 from plugins.datajack.forensic_utils import ForensicDB
+from plugins.datajack.cartridge_utils import validate_manifest
 
 def find_aim_root():
     current = os.path.abspath(os.getcwd())
@@ -39,6 +40,9 @@ def import_cartridge(cartridge_path):
 
         with open(metadata_path, 'r') as f:
             metadata = json.load(f)
+
+        if not validate_manifest(metadata):
+            print("[WARN] Cartridge missing manifest fields — legacy cartridge detected.")
 
         expected_hash = metadata.get("payload_hash")
         if not expected_hash:

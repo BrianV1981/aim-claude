@@ -6,7 +6,10 @@ Lists, validates, and extracts metadata from .engram cartridge files.
 import os
 import json
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
+
+MANIFEST_REQUIRED_FIELDS = ("name", "version", "embedding_model", "fragment_count", "created_at")
 
 
 def list_cartridges(engram_dir):
@@ -43,3 +46,24 @@ def get_cartridge_info(cartridge_path):
         return meta
     except Exception:
         return None
+
+
+def generate_manifest(name, version, embedding_model, fragment_count, source_repo=None):
+    """Creates a manifest dict with required cartridge metadata."""
+    manifest = {
+        "name": name,
+        "version": version,
+        "embedding_model": embedding_model,
+        "fragment_count": fragment_count,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if source_repo:
+        manifest["source_repo"] = source_repo
+    return manifest
+
+
+def validate_manifest(manifest):
+    """Returns True if the manifest dict contains all required fields."""
+    if not isinstance(manifest, dict):
+        return False
+    return all(field in manifest for field in MANIFEST_REQUIRED_FIELDS)
