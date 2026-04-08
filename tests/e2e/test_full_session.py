@@ -1,11 +1,10 @@
 """
-E2E test: Full session flow — hook fires → signal extracted → session summarized → hourly written.
+E2E test: Full session flow — signal extraction + Single-Shot Memory Compiler.
 
-This tests the complete System 1 + System 2 pipeline without live LLM calls:
+Tests the pipeline without live LLM calls:
   1. A Claude Code JSONL session transcript is created
   2. extract_signal.py correctly extracts signal from it
-  3. session_summarizer.py (--light mode) reads it, writes to memory/hourly/
-  4. memory_proposer.py detects the hourly file as input for Tier 2
+  3. session_summarizer.py (Single-Shot Compiler) updates MEMORY.md and CLAUDE.md
 
 Does NOT test:
   - LLM narrative generation (requires live model)
@@ -19,6 +18,7 @@ import subprocess
 import tempfile
 import glob
 import shutil
+import unittest.mock
 from pathlib import Path
 
 AIM_CLAUDE_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -235,54 +235,65 @@ class TestSessionSummarizerLightMode:
 
     def test_session_summarizer_no_crash_when_no_transcripts(self, tmp_path):
         aim_root = make_aim_root(tmp_path / "aim_root")
-        # No fake project dir — find_transcripts returns []
+        # No fake project dir — no archive/history transcripts
         result = subprocess.run(
-            [sys.executable, str(HOOKS_DIR / "session_summarizer.py"), "--light"],
+            [sys.executable, str(HOOKS_DIR / "session_summarizer.py")],
             capture_output=True, text=True,
             cwd=str(aim_root),
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         output = json.loads(result.stdout)
-        assert output["decision"] == "proceed"
-        assert output["updated"] == 0
+        assert output["decision"] == "skip"
+        assert output["reason"] == "no_transcript_found"
 
-    def test_session_summarizer_direct_call_light_mode(self, tmp_path):
-        """Direct integration: import and call with temp dirs."""
+    def test_session_summarizer_direct_call_with_mocked_llm(self, tmp_path):
+        """Direct integration: Single-Shot Compiler updates MEMORY.md and CLAUDE.md."""
         import importlib.util
         import types
+        from unittest.mock import MagicMock
 
         aim_root = make_aim_root(tmp_path / "aim_root")
-        transcript = tmp_path / "session.jsonl"
-        make_jsonl_transcript(transcript)
+        transcript = tmp_path / "transcript.md"
+        transcript.write_text("# Session\nUSER: test\nA.I.M.: confirmed\n")
 
-        # Stub reasoning_utils and memory_utils
-        for stub in ["reasoning_utils", "memory_utils"]:
-            if stub not in sys.modules:
-                sys.modules[stub] = types.ModuleType(stub)
+        # Create CLAUDE.md in aim_root
+        (aim_root / "CLAUDE.md").write_text("# Rules\n- existing rule\n")
+
+        # Stub reasoning_utils
+        if "reasoning_utils" not in sys.modules:
+            sys.modules["reasoning_utils"] = types.ModuleType("reasoning_utils")
         sys.modules["reasoning_utils"].generate_reasoning = None
-        sys.modules["memory_utils"].should_run_tier = lambda x, y: True
-        sys.modules["memory_utils"].mark_tier_run = lambda x: None
 
         spec = importlib.util.spec_from_file_location(
             "_ss_e2e", str(HOOKS_DIR / "session_summarizer.py")
         )
         mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        with unittest.mock.patch("os.getcwd", return_value=str(aim_root)):
+            spec.loader.exec_module(mod)
 
-        # Override paths to temp dir
         mod.AIM_ROOT = str(aim_root)
-        mod.HOURLY_DIR = str(aim_root / "memory" / "hourly")
-        mod.STATE_FILE = str(aim_root / "archive" / "scrivener_state.json")
         mod.MEMORY_PATH = str(aim_root / "core" / "MEMORY.md")
-        mod.generate_reasoning = None  # force light mode
+        mod.CLAUDE_PATH = str(aim_root / "CLAUDE.md")
 
-        result = mod.process_transcript(str(transcript), is_light_mode=True)
+        fake_output = """### core/MEMORY.md
+```markdown
+# Memory
+- existing fact
+- new fact from session (Added: 2026-04-08)
+```
+
+### CLAUDE.md
+```markdown
+# Rules
+- existing rule
+```
+"""
+        mod.generate_reasoning = MagicMock(return_value=fake_output)
+        result = mod.process_transcript(str(transcript))
         assert result is True
 
-        hourly_files = list((aim_root / "memory" / "hourly").glob("*.md"))
-        assert len(hourly_files) == 1
-        content = hourly_files[0].read_text()
-        assert "current state" in content or "test-session" in content
+        memory = (aim_root / "core" / "MEMORY.md").read_text()
+        assert "new fact from session" in memory
 
 
 # ---------------------------------------------------------------------------
@@ -368,75 +379,61 @@ class TestFullSessionFlow:
         user_texts = [t.get("text", "") for t in signal if t.get("role") == "user"]
         assert any("current state" in t for t in user_texts)
 
-        # Step 2: session summarizer (light) writes hourly
+        # Step 2: session summarizer (Single-Shot Compiler) updates MEMORY.md
         aim_root = make_aim_root(tmp_path / "aim_root")
+        (aim_root / "CLAUDE.md").write_text("# Rules\n")
 
-        for stub in ["reasoning_utils", "memory_utils"]:
+        # Write the extracted signal as a markdown transcript for the compiler
+        signal_md = aim_root / "archive" / "history" / "session.md"
+        signal_md.parent.mkdir(parents=True, exist_ok=True)
+        signal_md.write_text(json.dumps(signal, indent=2))
+
+        for stub in ["reasoning_utils"]:
             if stub not in sys.modules:
                 sys.modules[stub] = types.ModuleType(stub)
         sys.modules["reasoning_utils"].generate_reasoning = None
-        sys.modules["memory_utils"].should_run_tier = lambda x, y: True
-        sys.modules["memory_utils"].mark_tier_run = lambda x: None
 
         spec = importlib.util.spec_from_file_location(
             "_ss_e2e2", str(HOOKS_DIR / "session_summarizer.py")
         )
         mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        with unittest.mock.patch("os.getcwd", return_value=str(aim_root)):
+            spec.loader.exec_module(mod)
         mod.AIM_ROOT = str(aim_root)
-        mod.HOURLY_DIR = str(aim_root / "memory" / "hourly")
-        mod.STATE_FILE = str(aim_root / "archive" / "scrivener_state.json")
         mod.MEMORY_PATH = str(aim_root / "core" / "MEMORY.md")
-        mod.generate_reasoning = None
+        mod.CLAUDE_PATH = str(aim_root / "CLAUDE.md")
 
-        updated = mod.process_transcript(str(transcript), is_light_mode=True)
+        fake_output = """### core/MEMORY.md
+```markdown
+# Memory
+- e2e test session recorded (Added: 2026-04-08)
+```
+
+### CLAUDE.md
+```markdown
+# Rules
+```
+"""
+        from unittest.mock import MagicMock
+        mod.generate_reasoning = MagicMock(return_value=fake_output)
+
+        updated = mod.process_transcript(str(signal_md))
         assert updated is True
 
-        hourly_files = list((aim_root / "memory" / "hourly").glob("*.md"))
-        assert len(hourly_files) == 1
+        memory_content = (aim_root / "core" / "MEMORY.md").read_text()
+        assert "e2e test session recorded" in memory_content
 
-        hourly_content = hourly_files[0].read_text()
-        # The hourly file should reference the session
-        assert "e2e-session" in hourly_content or "Surgical Delta" in hourly_content
-
-        # Step 3: verify delta processing — second call produces no new output
-        updated_again = mod.process_transcript(str(transcript), is_light_mode=True)
-        assert updated_again is False, "Second pass should detect no new turns (delta guard)"
-
-    def test_extract_signal_and_summarizer_agree_on_turn_count(self, tmp_path):
-        """Signal extracted by extract_signal.py and session_summarizer must agree on content."""
-        import importlib.util
-        import types
-
+    def test_extract_signal_produces_valid_json(self, tmp_path):
+        """extract_signal.py produces valid JSON signal from a JSONL transcript."""
         transcript = tmp_path / "session.jsonl"
         make_jsonl_transcript(transcript, session_id="count-check-session")
 
-        # Signal via CLI
         result = subprocess.run(
             [sys.executable, str(SCRIPTS_DIR / "extract_signal.py"), str(transcript)],
             capture_output=True, text=True, cwd=str(AIM_CLAUDE_ROOT)
         )
         cli_signal = json.loads(result.stdout)
 
-        # Signal via session_summarizer module
-        for stub in ["reasoning_utils", "memory_utils"]:
-            if stub not in sys.modules:
-                sys.modules[stub] = types.ModuleType(stub)
-        sys.modules["reasoning_utils"].generate_reasoning = None
-        sys.modules["memory_utils"].should_run_tier = lambda x, y: True
-        sys.modules["memory_utils"].mark_tier_run = lambda x: None
-
-        spec = importlib.util.spec_from_file_location(
-            "_ss_count", str(HOOKS_DIR / "session_summarizer.py")
-        )
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _, ss_signal, _ = mod.extract_signal_jsonl(str(transcript))
-
-        # Both should find the same number of substantive turns
-        # (scripts/extract_signal.py and hooks/session_summarizer.py use different implementations
-        # but should agree on the count of user + assistant turns)
         cli_roles = {t.get("role") for t in cli_signal}
-        ss_roles = {t.get("role") for t in ss_signal}
-        assert "user" in cli_roles and "user" in ss_roles
-        assert "assistant" in cli_roles and "assistant" in ss_roles
+        assert "user" in cli_roles
+        assert "assistant" in cli_roles
