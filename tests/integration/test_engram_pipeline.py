@@ -281,6 +281,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
     """
     Loads retriever.py via importlib so we can swap its DB and embedding
     dependencies without polluting other tests.
+    Uses federated mock to route all DB access through a single test DB.
     """
 
     def _load_retriever(self):
@@ -293,6 +294,23 @@ class TestPerformSearchIntegration(unittest.TestCase):
         }):
             spec.loader.exec_module(mod)
         return mod
+
+    _FAKE_DB_PATH = "/tmp/fake_federated_test.db"
+
+    def _federated_patches(self, retriever, db_override=None, vec_override=None):
+        """Return a list of patch context managers for federated search."""
+        db = db_override if db_override is not None else self.db
+        _real_exists = os.path.exists
+        def _mock_exists(p):
+            return True if p == self._FAKE_DB_PATH else _real_exists(p)
+        patches = [
+            patch.object(retriever, "get_federated_dbs", return_value=[self._FAKE_DB_PATH]),
+            patch.object(retriever.os.path, "exists", side_effect=_mock_exists),
+            patch.object(retriever, "ForensicDB", return_value=db),
+        ]
+        if vec_override is not None:
+            patches.append(patch.object(retriever, "get_embedding", return_value=vec_override))
+        return patches
 
     def setUp(self):
         self.db = ForensicDB(custom_path=":memory:")
@@ -319,12 +337,18 @@ class TestPerformSearchIntegration(unittest.TestCase):
     def tearDown(self):
         self.db.close()
 
-    def _run(self, query, query_vec=None, top_k=10):
-        """Run perform_search with mocked DB and embedding."""
+    def _run(self, query, query_vec=None, top_k=10, db_override=None):
+        """Run perform_search with mocked DB and embedding (federated)."""
         retriever = self._load_retriever()
         fake_vec = query_vec if query_vec is not None else _unit_vec(0)
+        db = db_override if db_override is not None else self.db
+        _real_exists = os.path.exists
+        def _mock_exists(p):
+            return True if p == self._FAKE_DB_PATH else _real_exists(p)
 
-        with patch.object(retriever, "ForensicDB", return_value=self.db), \
+        with patch.object(retriever, "get_federated_dbs", return_value=[self._FAKE_DB_PATH]), \
+             patch.object(retriever.os.path, "exists", side_effect=_mock_exists), \
+             patch.object(retriever, "ForensicDB", return_value=db), \
              patch.object(retriever, "get_embedding", return_value=fake_vec), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search(query, top_k=top_k)
@@ -340,17 +364,18 @@ class TestPerformSearchIntegration(unittest.TestCase):
 
     def test_no_results_message_when_db_empty(self):
         empty_db = ForensicDB(custom_path=":memory:")
-        retriever = self._load_retriever()
-        with patch.object(retriever, "ForensicDB", return_value=empty_db), \
-             patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
-             patch("sys.stdout", new_callable=io.StringIO) as captured:
-            retriever.perform_search("anything", top_k=5)
+        output = self._run("anything", query_vec=_unit_vec(0), top_k=5, db_override=empty_db)
         empty_db.close()
-        self.assertIn("No forensic record", captured.getvalue())
+        self.assertIn("No forensic record", output)
 
     def test_failed_embedding_prints_error(self):
         retriever = self._load_retriever()
-        with patch.object(retriever, "ForensicDB", return_value=self.db), \
+        _real_exists = os.path.exists
+        def _mock_exists(p):
+            return True if p == self._FAKE_DB_PATH else _real_exists(p)
+        with patch.object(retriever, "get_federated_dbs", return_value=[self._FAKE_DB_PATH]), \
+             patch.object(retriever.os.path, "exists", side_effect=_mock_exists), \
+             patch.object(retriever, "ForensicDB", return_value=self.db), \
              patch.object(retriever, "get_embedding", return_value=None), \
              patch("sys.stdout", new_callable=io.StringIO) as captured:
             retriever.perform_search("query", top_k=5)
@@ -363,7 +388,12 @@ class TestPerformSearchIntegration(unittest.TestCase):
         """
         retriever = self._load_retriever()
         spy_db = MagicMock(wraps=self.db)
-        with patch.object(retriever, "ForensicDB", return_value=spy_db), \
+        _real_exists = os.path.exists
+        def _mock_exists(p):
+            return True if p == self._FAKE_DB_PATH else _real_exists(p)
+        with patch.object(retriever, "get_federated_dbs", return_value=[self._FAKE_DB_PATH]), \
+             patch.object(retriever.os.path, "exists", side_effect=_mock_exists), \
+             patch.object(retriever, "ForensicDB", return_value=spy_db), \
              patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
              patch("sys.stdout", new_callable=io.StringIO):
             retriever.perform_search("hybrid", top_k=5)
@@ -377,12 +407,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
         self.db.add_fragments("integ-03", [
             {"type": "session", "content": "Extra fragment content.", "embedding": _unit_vec(2), "timestamp": None}
         ])
-        retriever = self._load_retriever()
-        with patch.object(retriever, "ForensicDB", return_value=self.db), \
-             patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
-             patch("sys.stdout", new_callable=io.StringIO) as captured:
-            retriever.perform_search("query", top_k=1)
-        output = captured.getvalue()
+        output = self._run("query", query_vec=_unit_vec(0), top_k=1)
         # Only one [1] block should appear
         self.assertEqual(output.count("[1]"), 1)
         self.assertEqual(output.count("[2]"), 0)
@@ -403,12 +428,7 @@ class TestPerformSearchIntegration(unittest.TestCase):
                 "timestamp": None,
             }
         ])
-        retriever = self._load_retriever()
-        with patch.object(retriever, "ForensicDB", return_value=self.db), \
-             patch.object(retriever, "get_embedding", return_value=_unit_vec(0)), \
-             patch("sys.stdout", new_callable=io.StringIO) as captured:
-            retriever.perform_search("hybrid", top_k=20)
-        output = captured.getvalue()
+        output = self._run("hybrid", query_vec=_unit_vec(0), top_k=20)
         self.assertEqual(output.count("hybrid search dedup test marker"), 1)
 
 
