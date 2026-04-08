@@ -9,6 +9,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+CARTRIDGE_SCHEMA_VERSION = "2.0.0"
 MANIFEST_REQUIRED_FIELDS = ("name", "version", "embedding_model", "fragment_count", "created_at")
 
 
@@ -51,6 +52,7 @@ def get_cartridge_info(cartridge_path):
 def generate_manifest(name, version, embedding_model, fragment_count, source_repo=None):
     """Creates a manifest dict with required cartridge metadata."""
     manifest = {
+        "schema_version": CARTRIDGE_SCHEMA_VERSION,
         "name": name,
         "version": version,
         "embedding_model": embedding_model,
@@ -67,3 +69,17 @@ def validate_manifest(manifest):
     if not isinstance(manifest, dict):
         return False
     return all(field in manifest for field in MANIFEST_REQUIRED_FIELDS)
+
+
+def check_embedding_compatibility(cartridge_model, local_model):
+    """Check if a cartridge's embedding model is compatible with the local model.
+
+    Returns True if compatible, False otherwise.
+    Legacy cartridges (cartridge_model=None) are accepted best-effort.
+    Unknown local model (local_model=None) is rejected.
+    """
+    if cartridge_model is None:
+        return True
+    if local_model is None:
+        return False
+    return cartridge_model == local_model
