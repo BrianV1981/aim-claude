@@ -6,6 +6,7 @@ memory/
 
 # WSL artifacts
 *.Zone.Identifier
+*:Zone.Identifier
 
 # Python
 __pycache__/
@@ -28,7 +29,9 @@ build/
 Thumbs.db
 
 # Data directories (not tracked)
-archive
+archive/
+foundry/
+workspace/
 
 # Runtime state (hooks)
 continuity/*.json
