@@ -2,7 +2,7 @@
 Regression tests for issue #59:
 Skills in aim/skills/ (symlinked as aim-claude/skills/) used Path(__file__).parent.parent
 to derive aim_root. Since skills/ is a symlink, __file__ resolves to the physical
-path aim/skills/, making aim_root = /home/kingb/aim (wrong).
+path aim/skills/, making aim_root = ~/aim (wrong).
 
 Fix: each skill now uses a cwd-first walk-up (_find_aim_root()) with __file__ as fallback.
 Since the MCP server passes cwd=AIM_ROOT (aim-claude) to skill subprocesses, the
@@ -73,7 +73,7 @@ def _assert_aim_root_correct(mod, label):
         "The __file__-parent bug may have regressed."
     )
     # Verify it's NOT the bare aim/ repo (the shared swarm repo)
-    aim_bare = "/home/kingb/aim"
+    aim_bare = "~/aim"
     assert result != aim_bare, (
         f"{label}: resolved to bare aim/ repo instead of aim-claude/"
     )
@@ -131,7 +131,7 @@ class TestProposeMemoryCommitAimRoot:
             root = mod._find_aim_root()
         expected_cli = os.path.join(root, "scripts", "aim_cli.py")
         # The script should not be pointing into bare aim/
-        aim_bare = "/home/kingb/aim"
+        aim_bare = "~/aim"
         assert not expected_cli.startswith(aim_bare + "/scripts"), (
             f"aim_cli path resolves into bare aim/ repo: {expected_cli!r}"
         )

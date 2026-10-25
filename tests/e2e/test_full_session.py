@@ -66,7 +66,7 @@ def make_jsonl_transcript(path: Path, session_id: str = "test-session-id-abc"):
             "uuid": "u1",
             "timestamp": "2026-03-31T01:00:00Z",
             "sessionId": session_id,
-            "cwd": "/home/kingb/aim-claude",
+            "cwd": "~/aim-claude",
         },
         {
             "type": "assistant",
@@ -81,7 +81,7 @@ def make_jsonl_transcript(path: Path, session_id: str = "test-session-id-abc"):
             "uuid": "a1",
             "timestamp": "2026-03-31T01:00:05Z",
             "sessionId": session_id,
-            "cwd": "/home/kingb/aim-claude",
+            "cwd": "~/aim-claude",
         },
         {
             "type": "user",
@@ -89,7 +89,7 @@ def make_jsonl_transcript(path: Path, session_id: str = "test-session-id-abc"):
             "uuid": "u2",
             "timestamp": "2026-03-31T01:00:10Z",
             "sessionId": session_id,
-            "cwd": "/home/kingb/aim-claude",
+            "cwd": "~/aim-claude",
         },
     ]
     path.write_text("\n".join(json.dumps(l) for l in lines) + "\n")

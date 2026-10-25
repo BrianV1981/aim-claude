@@ -20,8 +20,8 @@ from unittest.mock import MagicMock, patch
 # Resolve paths
 # ---------------------------------------------------------------------------
 
-AIM_CLAUDE_ROOT = str(Path(__file__).parent.parent.parent)  # /home/kingb/aim-claude
-AIM_SRC = os.path.join(AIM_CLAUDE_ROOT, "src")  # symlink → /home/kingb/aim/src
+AIM_CLAUDE_ROOT = str(Path(__file__).parent.parent.parent)  # ~/aim-claude
+AIM_SRC = os.path.join(AIM_CLAUDE_ROOT, "src")  # symlink → ~/aim/src
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ class TestReasoningUtilsFindAimRoot:
 
     def test_aim_root_resolves_to_aim_claude_when_cwd_is_aim_claude(self):
         """
-        When cwd is /home/kingb/aim-claude, AIM_ROOT must be aim-claude,
+        When cwd is ~/aim-claude, AIM_ROOT must be aim-claude,
         NOT aim (the physical location of reasoning_utils.py via __file__).
         """
         mod = _load_reasoning_utils(cwd_override=AIM_CLAUDE_ROOT)
@@ -103,7 +103,7 @@ class TestReasoningUtilsFindAimRoot:
         mod = _load_reasoning_utils(cwd_override=AIM_CLAUDE_ROOT)
         assert "aim-claude" in mod.AIM_ROOT, (
             f"AIM_ROOT={mod.AIM_ROOT!r} does not contain 'aim-claude'. "
-            "Likely resolved via __file__ symlink to bare /home/kingb/aim."
+            "Likely resolved via __file__ symlink to bare ~/aim."
         )
 
 

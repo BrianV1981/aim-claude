@@ -14,7 +14,7 @@ You are waking up into a fully operational A.I.M. workspace. The previous agent 
 ## 1. WHAT WAS ACCOMPLISHED THIS SESSION
 
 ### The Full Migration (Phases 1-10) — ALL COMPLETE
-- **Phase 1 (#1):** `aim-claude` CLI wired via symlinks to shared backend at `/home/kingb/aim/`
+- **Phase 1 (#1):** `aim-claude` CLI wired via symlinks to shared backend at `~/aim/`
 - **Phase 2 (#2-4):** 3 hooks ported — cognitive_mantra, failsafe_snapshot, context_injector
 - **Phase 3 (#5-6):** Claude Code session format documented (JSONL), signal sieve at 9.3x compression
 - **Phase 4 (#7-11):** Engram DB verified (21,962 fragments, 3,345 sessions), memory pipeline, sovereign sync, history scribe
@@ -50,7 +50,7 @@ Only Phase 11 future targets remain:
 ## 2. REPOSITORY STRUCTURE
 
 ```
-/home/kingb/aim-claude/
+~/aim-claude/
 ├── CLAUDE.md                          ← Cognitive baseline (auto-loaded)
 ├── README.md                          ← Minimal — points to wiki
 ├── .mcp.json                          ← MCP server registration
@@ -62,7 +62,7 @@ Only Phase 11 future targets remain:
 │   ├── aim_cli.py                     ← Main CLI (adapted copy)
 │   ├── extract_signal.py              ← JSONL → signal skeleton (9.3x compression)
 │   ├── mcp_server_claude.py           ← MCP wrapper (reads CLAUDE.md not GEMINI.md)
-│   └── *.py / *.sh                    ← Symlinks → /home/kingb/aim/scripts/
+│   └── *.py / *.sh                    ← Symlinks → ~/aim/scripts/
 ├── hooks/
 │   ├── cognitive_mantra.py            ← PostToolUse: whisper@25, mantra@50
 │   ├── failsafe_context_snapshot.py   ← PostToolUse: rolling backup + tail
@@ -76,7 +76,7 @@ Only Phase 11 future targets remain:
 ├── memory/                            ← Local only, gitignored
 ├── notes/                             ← Scratchpad
 │
-│ SYMLINKS → /home/kingb/aim/:
+│ SYMLINKS → ~/aim/:
 ├── src/      ← Core engine
 ├── archive/  ← Engram DB + history DB
 ├── core/     ← CONFIG.json
@@ -104,7 +104,7 @@ Verify hooks fire in a real session (not simulated):
 Consider adding a `PreCompact` hook to save critical context before autocompaction. This session hit 99% context — a PreCompact hook would have preserved state automatically.
 
 ### Priority 4: Phase 11 (When Operator Says Go)
-- #30: aim-codex — same symlink strategy to `/home/kingb/aim-codex/`
+- #30: aim-codex — same symlink strategy to `~/aim-codex/`
 - #31: aim-ollama — fully local, zero API cost
 - #32: macOS support
 
@@ -113,7 +113,7 @@ Consider adding a `PreCompact` hook to save critical context before autocompacti
 ## 4. OPERATOR DIRECTIVES
 
 - **Never commit directly to `main`.** Use `aim-claude bug` → `fix` → `push`.
-- **Never guess.** Run `aim-claude search` or read `/home/kingb/aim/aim.wiki/`.
+- **Never guess.** Run `aim-claude search` or read `~/aim/aim.wiki/`.
 - **TDD first.** Every change needs a test.
 - **Brian is novice-level technically.** Explain clearly, no jargon.
 - **Communication style:** Direct, blunt, no fluff. Match it.
@@ -124,10 +124,10 @@ Consider adding a `PreCompact` hook to save critical context before autocompacti
 
 | Resource | Location |
 |---|---|
-| A.I.M. source (backend) | `/home/kingb/aim/` |
-| A.I.M. wiki | `/home/kingb/aim/aim.wiki/` |
-| Engram DB | `/home/kingb/aim/archive/engram.db` |
-| aim-claude workspace | `/home/kingb/aim-claude/` |
+| A.I.M. source (backend) | `~/aim/` |
+| A.I.M. wiki | `~/aim/aim.wiki/` |
+| Engram DB | `~/aim/archive/engram.db` |
+| aim-claude workspace | `~/aim-claude/` |
 | Claude memory | `~/.claude/projects/-home-kingb-aim-claude/memory/` |
 | Claude sessions | `~/.claude/projects/-home-kingb-aim-claude/*.jsonl` |
 | User settings | `~/.claude/settings.json` |

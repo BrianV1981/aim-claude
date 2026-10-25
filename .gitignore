@@ -40,3 +40,5 @@ continuity/*.jsonl
 # Env
 .env
 .env.*
+.mcp.json
+core/CONFIG.json

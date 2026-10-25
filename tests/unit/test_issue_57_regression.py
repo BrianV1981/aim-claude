@@ -2,7 +2,7 @@
 Regression tests for issue #57:
 heartbeat.py, mcp_server.py, maintenance.py, retriever.py all used __file__-first
 root resolution. Since src/ is a symlink to aim/src/, this caused AIM_ROOT to
-resolve to /home/kingb/aim instead of /home/kingb/aim-claude.
+resolve to ~/aim instead of ~/aim-claude.
 
 All four must now use cwd-first lookup identical to the pattern established in #55.
 """
@@ -94,9 +94,9 @@ class TestHeartbeatFindAimRoot:
     def test_find_aim_root_checks_cwd_before_file(self):
         """Verify the function resolves via cwd, not __file__ which would give aim/ bare."""
         mod = self._load()
-        # The physical parent of src/ (via __file__) is /home/kingb/aim — not aim-claude.
+        # The physical parent of src/ (via __file__) is ~/aim — not aim-claude.
         # If the fix is working, AIM_ROOT must be aim-claude, not bare aim.
-        aim_bare = "/home/kingb/aim"  # the shared swarm repo (must NOT resolve here)
+        aim_bare = "~/aim"  # the shared swarm repo (must NOT resolve here)
         assert mod.AIM_ROOT != aim_bare, (
             "heartbeat.py resolved AIM_ROOT via __file__ (aim/), not cwd (aim-claude/)"
         )
@@ -196,5 +196,5 @@ class TestRetrieverFindAimRoot:
         After the fix, it must resolve via cwd. The correct AIM_ROOT is the proof.
         """
         mod = self._load()
-        # If it's wrong, it would be /home/kingb/aim — not aim-claude
+        # If it's wrong, it would be ~/aim — not aim-claude
         assert mod.AIM_ROOT == AIM_CLAUDE_ROOT

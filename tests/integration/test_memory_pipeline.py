@@ -50,7 +50,7 @@ def make_minimal_jsonl(path, session_id="test-session-pipeline-001"):
                 "content": [
                     {"type": "text", "text": "The project is in a healthy state."},
                     {"type": "tool_use", "name": "Read",
-                     "input": {"file_path": "/home/kingb/aim-claude/CLAUDE.md"}},
+                     "input": {"file_path": "~/aim-claude/CLAUDE.md"}},
                 ],
             },
         }),

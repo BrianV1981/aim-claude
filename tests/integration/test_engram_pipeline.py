@@ -52,7 +52,7 @@ _config_stub.CONFIG = {
     }
 }
 
-AIM_SRC = str(Path(__file__).parent.parent.parent / "src")  # symlink -> /home/kingb/aim/src
+AIM_SRC = str(Path(__file__).parent.parent.parent / "src")  # symlink -> ~/aim/src
 _config_stub.AIM_ROOT = str(Path(AIM_SRC).parent)
 sys.modules["config_utils"] = _config_stub
 
